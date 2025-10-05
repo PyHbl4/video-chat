@@ -3,6 +3,7 @@ uvicorn[standard]<0.31.0,>=0.30.0
 python-socketio[asyncio]<6.0.0,>=5.11.0
 pydantic<3.0.0,>=2.8.0
 pydantic-settings<3.0.0,>=2.4.0
+email-validator<3.0.0,>=2.2.0
 sqlalchemy<3.0.0,>=2.0.32
 asyncpg<1.0.0,>=0.29.0
 redis<6.0.0,>=5.0.8

@@ -63,6 +63,7 @@ services:
     image: node:20
     container_name: videochat_web
     working_dir: /workspace
+    profiles: ["frontend"]
     command: >-
       bash -lc "corepack enable && pnpm install && pnpm --filter @video-chat/web dev -- --hostname 0.0.0.0 --port 3000"
     volumes:
@@ -71,6 +72,7 @@ services:
       - ../../env/web.env.example
     environment:
       <<: *default-environment
+      CI: "true"
       PORT: "3000"
     ports:
       - "3000:3000"
@@ -82,14 +84,16 @@ services:
     image: node:20
     container_name: videochat_admin
     working_dir: /workspace
+    profiles: ["frontend"]
     command: >-
-      bash -lc "corepack enable && pnpm install && pnpm --filter @video-chat/admin dev -- --hostname 0.0.0.0 --port 3100"
+      bash -lc "corepack enable && if [ ! -d node_modules ]; then echo 'Waiting for workspace install...'; while [ ! -d node_modules ]; do sleep 2; done; fi && pnpm --filter @video-chat/admin dev -- --hostname 0.0.0.0 --port 3100"
     volumes:
       - ../..:/workspace
     env_file:
       - ../../env/admin.env.example
     environment:
       <<: *default-environment
+      CI: "true"
       PORT: "3100"
     ports:
       - "3100:3100"

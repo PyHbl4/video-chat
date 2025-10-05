@@ -101,12 +101,12 @@ async def login_user(
     return AuthSession(csrf_token=csrf_token)
 
 
-@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 async def logout_user(
     request: Request,
     response: Response,
     current_user: User = Depends(get_current_user),
-) -> None:
+) -> Response:
     header_name = settings.csrf_header
     csrf_token = request.headers.get(header_name)
     if not csrf_token:
@@ -123,6 +123,9 @@ async def logout_user(
         samesite=settings.session_samesite,
         path="/",
     )
+
+    response.status_code = status.HTTP_204_NO_CONTENT
+    return response
 
 
 @router.get("/me", response_model=UserResponse)
