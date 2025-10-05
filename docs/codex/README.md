@@ -1,5 +1,7 @@
 # Self‑Hosted Video Chat — Codex Brief (Master)
 
+Общение внутри команды ведется на русском языке
+
 **Updated:** 2025-10-04 17:39 UTC
 
 Этот документ — главный вход для агента **GPT‑5‑codex‑high**.  

@@ -1,0 +1,29 @@
+
+> @video-chat/web@0.0.0 dev /Users/maximrunkov/Desktop/projects/video-chat/apps/web
+> next dev --port 3000
+
+ [33m[1m⚠[22m[39m `experimental.typedRoutes` has been moved to `typedRoutes`. Please update your next.config.ts file accordingly.
+   [1m[38;2;173;127;168m▲ Next.js 15.5.4[39m[22m
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.0.36:3000
+   - Experiments (use with caution):
+     [1m✓[22m typedRoutes
+
+ [32m[1m✓[22m[39m Starting...
+
+ [37m[1m [22m[39m We detected TypeScript in your project and reconfigured your [36mtsconfig.json[39m file for you. Strict-mode is set to [36mfalse[39m by default.
+ [37m[1m [22m[39m The following suggested values were added to your [36mtsconfig.json[39m. These values [36mcan be changed[39m to fit your project's needs:
+
+ [37m[1m [22m[39m 	- [36mlib[39m was set to [1mdom,dom.iterable,esnext[22m
+ [37m[1m [22m[39m 	- [36mincremental[39m was set to [1mtrue[22m
+ [37m[1m [22m[39m 	- [36minclude[39m was updated to add [1m'.next/types/**/*.ts'[22m
+ [37m[1m [22m[39m 	- [36mplugins[39m was updated to add [1m{ name: 'next' }[22m
+
+ [37m[1m [22m[39m The following [37mmandatory changes[39m were made to your [36mtsconfig.json[39m:
+
+ [37m[1m [22m[39m 	- [36misolatedModules[39m was set to [1mtrue[22m (requirement for SWC / Babel)
+
+ [32m[1m✓[22m[39m Ready in 1265ms
+ [37m[1m○[22m[39m Compiling / ...
+ [32m[1m✓[22m[39m Compiled / in 1264ms (537 modules)
+ GET / [32m200[39m in 1476ms

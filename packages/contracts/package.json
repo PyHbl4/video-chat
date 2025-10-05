@@ -1,0 +1,15 @@
+{
+  "name": "@video-chat/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "gen": "npm run gen:ts && npm run gen:py",
+    "gen:ts": "mkdir -p dist && openapi-typescript openapi.yaml -o dist/types.ts",
+    "gen:py": "./scripts/gen-py.sh"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "openapi-typescript": "^7.5.1"
+  }
+}

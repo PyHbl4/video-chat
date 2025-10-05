@@ -1,0 +1,730 @@
+openapi: 3.1.0
+info:
+  title: Self-Hosted Video Chat API
+  version: 0.1.0
+  description: |
+    Core REST API contracts for the self-hosted video chat platform.
+    This MVP specification covers authentication, user discovery, friend management,
+    room metadata, messaging summaries, WebRTC negotiation helpers, and health checks.
+servers:
+  - url: http://localhost:8000
+    description: Local development
+  - url: https://api.example.com
+    description: Production placeholder
+
+tags:
+  - name: auth
+    description: Authentication and session lifecycle endpoints.
+  - name: users
+    description: User discovery and profile queries.
+  - name: friends
+    description: Friend requests, approvals, and roster listing.
+  - name: rooms
+    description: Spatial audio/video rooms available to users.
+  - name: messages
+    description: Chat message retrieval and delivery helpers.
+  - name: webrtc
+    description: Signaling helpers for establishing peer connections.
+  - name: turn
+    description: TURN/STUN credential distribution.
+  - name: health
+    description: Operational readiness and monitoring probes.
+
+paths:
+  /auth/register:
+    post:
+      summary: Register a new account
+      description: Create a new user and establish a session in a single step.
+      operationId: register
+      tags:
+        - auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRegister'
+      responses:
+        '201':
+          description: User registered successfully.
+          headers:
+            Set-Cookie:
+              description: Session cookie for subsequent authenticated requests.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionUser'
+        '400':
+          description: Invalid payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Email or username already taken.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/login:
+    post:
+      summary: Authenticate with email and password
+      description: Exchange credentials for a logged-in session.
+      operationId: login
+      tags:
+        - auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthLogin'
+      responses:
+        '200':
+          description: Credentials accepted; session established.
+          headers:
+            Set-Cookie:
+              description: Session cookie for subsequent authenticated requests.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionUser'
+        '401':
+          description: Invalid credentials.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/logout:
+    post:
+      summary: Terminate the current session
+      description: Invalidates the active session cookie and clears authentication state.
+      operationId: logout
+      tags:
+        - auth
+      responses:
+        '204':
+          description: Session terminated.
+        '401':
+          description: Session not found or already invalidated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /me:
+    get:
+      summary: Retrieve the current authenticated user
+      description: Returns the session user object if the requester is authenticated.
+      operationId: getCurrentUser
+      tags:
+        - auth
+      responses:
+        '200':
+          description: Authenticated user payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionUser'
+        '401':
+          description: No valid session available.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users/search:
+    get:
+      summary: Search for users
+      description: Case-insensitive search across usernames and display names.
+      operationId: searchUsers
+      tags:
+        - users
+      parameters:
+        - in: query
+          name: q
+          description: Free-form search query (minimum 2 characters).
+          required: true
+          schema:
+            type: string
+            minLength: 2
+        - in: query
+          name: limit
+          description: Maximum number of results to return.
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        '200':
+          description: Matching users returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+        '400':
+          description: Query too short or parameters invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /friends/request:
+    post:
+      summary: Send a friend request
+      description: Initiates a new friend request to another user.
+      operationId: requestFriend
+      tags:
+        - friends
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FriendRequestPayload'
+      responses:
+        '202':
+          description: Friend request queued for review.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Friend'
+        '400':
+          description: Request invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request already exists or users already connected.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /friends/accept:
+    post:
+      summary: Accept a pending friend request
+      description: Confirms a friend relationship and moves it into an accepted state.
+      operationId: acceptFriend
+      tags:
+        - friends
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FriendDecisionPayload'
+      responses:
+        '200':
+          description: Friend request accepted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Friend'
+        '404':
+          description: Request not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /friends/decline:
+    post:
+      summary: Decline a pending friend request
+      description: Rejects a friend request and leaves both users unconnected.
+      operationId: declineFriend
+      tags:
+        - friends
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FriendDecisionPayload'
+      responses:
+        '200':
+          description: Friend request declined.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Friend'
+        '404':
+          description: Request not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /friends:
+    get:
+      summary: List friend relationships
+      description: Returns both accepted friends and pending requests for the current user.
+      operationId: listFriends
+      tags:
+        - friends
+      parameters:
+        - in: query
+          name: status
+          description: Filter by relationship status.
+          required: false
+          schema:
+            type: string
+            enum:
+              - pending
+              - accepted
+              - blocked
+      responses:
+        '200':
+          description: Friends returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Friend'
+        '401':
+          description: Session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /rooms:
+    get:
+      summary: List rooms available to the current user
+      description: Provides metadata about joinable rooms for lobby selection.
+      operationId: listRooms
+      tags:
+        - rooms
+      responses:
+        '200':
+          description: Rooms returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Room'
+        '401':
+          description: Session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /rooms/{roomId}/messages:
+    get:
+      summary: Fetch recent messages for a room
+      description: Returns paginated chat messages for the specified room.
+      operationId: listRoomMessages
+      tags:
+        - messages
+      parameters:
+        - in: path
+          name: roomId
+          required: true
+          description: Unique identifier of the room.
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: before
+          required: false
+          description: Return messages sent before this ISO timestamp.
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: limit
+          required: false
+          description: Maximum number of messages to return.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Messages returned for the requested room.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - hasMore
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Message'
+                  hasMore:
+                    type: boolean
+                    description: Indicates if more messages are available when paginating backwards.
+        '401':
+          description: Session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Room not found or access denied.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /webrtc/ice-config:
+    get:
+      summary: Retrieve ICE server configuration
+      description: Provides STUN/TURN credentials for establishing peer connections.
+      operationId: getIceConfig
+      tags:
+        - webrtc
+        - turn
+      responses:
+        '200':
+          description: ICE configuration payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IceConfig'
+        '401':
+          description: Session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /healthz:
+    get:
+      summary: Health probe
+      description: Returns service readiness information for orchestrators.
+      operationId: healthCheck
+      tags:
+        - health
+      responses:
+        '200':
+          description: Service is healthy.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+
+components:
+  schemas:
+    User:
+      type: object
+      required:
+        - id
+        - username
+        - displayName
+        - avatarUrl
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 3f2a6e82-4f14-4dcd-ab1a-2c8c8e9b444c
+        username:
+          type: string
+          minLength: 3
+          maxLength: 32
+          example: maxim
+        displayName:
+          type: string
+          example: Maxim Runkov
+        avatarUrl:
+          type: string
+          format: uri
+          nullable: true
+          example: https://cdn.example.com/avatars/maxim.png
+        bio:
+          type: string
+          nullable: true
+          example: Loves self-hosted infrastructure.
+        createdAt:
+          type: string
+          format: date-time
+          example: 2024-01-18T14:12:03Z
+
+    AuthRegister:
+      type: object
+      required:
+        - email
+        - password
+        - username
+      properties:
+        email:
+          type: string
+          format: email
+          example: maxim@example.com
+        username:
+          type: string
+          minLength: 3
+          maxLength: 32
+          example: maxim
+        displayName:
+          type: string
+          nullable: true
+          example: Maxim Runkov
+        password:
+          type: string
+          format: password
+          minLength: 8
+          example: use-a-strong-password
+
+    AuthLogin:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: maxim@example.com
+        password:
+          type: string
+          format: password
+          example: use-a-strong-password
+        rememberMe:
+          type: boolean
+          default: false
+
+    SessionUser:
+      type: object
+      required:
+        - user
+        - sessionId
+        - expiresAt
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+          example: d743f566-b0e7-4f3c-98cb-27ef7ad0b5a4
+        expiresAt:
+          type: string
+          format: date-time
+          example: 2024-02-18T14:12:03Z
+        user:
+          $ref: '#/components/schemas/User'
+
+    Friend:
+      type: object
+      required:
+        - id
+        - requesterId
+        - addresseeId
+        - status
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        requesterId:
+          type: string
+          format: uuid
+        addresseeId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+            - pending
+            - accepted
+            - declined
+            - blocked
+        createdAt:
+          type: string
+          format: date-time
+        respondedAt:
+          type: string
+          format: date-time
+          nullable: true
+        requester:
+          $ref: '#/components/schemas/User'
+        addressee:
+          $ref: '#/components/schemas/User'
+
+    Room:
+      type: object
+      required:
+        - id
+        - name
+        - ownerId
+        - participantCount
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Daily Standup
+        description:
+          type: string
+          nullable: true
+        ownerId:
+          type: string
+          format: uuid
+        isPrivate:
+          type: boolean
+          default: false
+        participantCount:
+          type: integer
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    Message:
+      type: object
+      required:
+        - id
+        - roomId
+        - senderId
+        - body
+        - sentAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        roomId:
+          type: string
+          format: uuid
+        senderId:
+          type: string
+          format: uuid
+        body:
+          type: string
+          example: Ready for the call?
+        sentAt:
+          type: string
+          format: date-time
+        editedAt:
+          type: string
+          format: date-time
+          nullable: true
+        attachments:
+          type: array
+          items:
+            type: string
+            format: uri
+
+    IceConfig:
+      type: object
+      required:
+        - ttlSeconds
+        - servers
+      properties:
+        ttlSeconds:
+          type: integer
+          minimum: 30
+          example: 3600
+        servers:
+          type: array
+          items:
+            type: object
+            required:
+              - urls
+            properties:
+              urls:
+                oneOf:
+                  - type: string
+                  - type: array
+                    items:
+                      type: string
+              username:
+                type: string
+                nullable: true
+              credential:
+                type: string
+                nullable: true
+
+    FriendRequestPayload:
+      type: object
+      required:
+        - targetUserId
+      properties:
+        targetUserId:
+          type: string
+          format: uuid
+
+    FriendDecisionPayload:
+      type: object
+      required:
+        - requestId
+      properties:
+        requestId:
+          type: string
+          format: uuid
+
+    HealthStatus:
+      type: object
+      required:
+        - status
+        - timestamp
+      properties:
+        status:
+          type: string
+          example: ok
+        timestamp:
+          type: string
+          format: date-time
+        detail:
+          type: string
+          nullable: true
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          example: validation_error
+        message:
+          type: string
+          example: One or more fields failed validation.
+        fields:
+          type: object
+          additionalProperties:
+            type: string
+  securitySchemes:
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+

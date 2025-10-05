@@ -1,0 +1,101 @@
+maximrunkov@Mac-mini-Maxim video-chat % docker compose -f infra/docker/docker-compose.dev.yml up --build
+WARN[0000] /Users/maximrunkov/Desktop/projects/video-chat/infra/docker/docker-compose.dev.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+[+] Running 6/6
+ ✔ Container videochat_redis   Created                                                                                                               0.0s 
+ ✔ Container videochat_coturn  Created                                                                                                               0.0s 
+ ✔ Container videochat_db      Created                                                                                                               0.0s 
+ ✔ Container videochat_api     Created                                                                                                               0.0s 
+ ✔ Container videochat_admin   Created                                                                                                               0.0s 
+ ✔ Container videochat_web     Created                                                                                                               0.0s 
+Attaching to videochat_admin, videochat_api, videochat_coturn, videochat_db, videochat_redis, videochat_web
+videochat_redis   | 1:C 05 Oct 2025 14:44:59.841 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+videochat_redis   | 1:C 05 Oct 2025 14:44:59.841 * Redis version=7.4.6, bits=64, commit=00000000, modified=0, pid=1, just started
+videochat_db      | 
+videochat_redis   | 1:C 05 Oct 2025 14:44:59.841 * Configuration loaded
+videochat_db      | PostgreSQL Database directory appears to contain a database; Skipping initialization
+videochat_redis   | 1:M 05 Oct 2025 14:44:59.841 * monotonic clock: POSIX clock_gettime
+videochat_db      | 
+videochat_redis   | 1:M 05 Oct 2025 14:44:59.842 * Running mode=standalone, port=6379.
+videochat_redis   | 1:M 05 Oct 2025 14:44:59.842 * Server initialized
+videochat_redis   | 1:M 05 Oct 2025 14:44:59.842 * Loading RDB produced by version 7.4.6
+videochat_redis   | 1:M 05 Oct 2025 14:44:59.842 * RDB age 16 seconds
+videochat_redis   | 1:M 05 Oct 2025 14:44:59.842 * RDB memory usage when created 0.96 Mb
+videochat_redis   | 1:M 05 Oct 2025 14:44:59.842 * Done loading RDB, keys loaded: 0, keys expired: 0.
+videochat_redis   | 1:M 05 Oct 2025 14:44:59.842 * DB loaded from disk: 0.000 seconds
+videochat_redis   | 1:M 05 Oct 2025 14:44:59.842 * Ready to accept connections tcp
+videochat_db      | 2025-10-05 14:44:59.854 UTC [1] LOG:  starting PostgreSQL 16.10 (Debian 16.10-1.pgdg13+1) on aarch64-unknown-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+videochat_db      | 2025-10-05 14:44:59.854 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+videochat_db      | 2025-10-05 14:44:59.854 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+videochat_db      | 2025-10-05 14:44:59.857 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+videochat_db      | 2025-10-05 14:44:59.859 UTC [29] LOG:  database system was shut down at 2025-10-05 14:44:43 UTC
+videochat_db      | 2025-10-05 14:44:59.863 UTC [1] LOG:  database system is ready to accept connections
+videochat_coturn  | 0: (1): INFO: System cpu num is 10
+videochat_coturn  | 0: (1): INFO: System cpu num is 10
+videochat_coturn  | 0: (1): INFO: System enable num is 10
+videochat_coturn  | 0: (1): WARNING: Cannot find config file: turnserver.conf. Default and command-line settings will be used.
+videochat_coturn  | 0: (1): INFO: Coturn Version Coturn-4.6.2 'Gorst'
+videochat_coturn  | 0: (1): INFO: Max number of open files/sockets allowed for this process: 1048576
+videochat_coturn  | 0: (1): INFO: Due to the open files/sockets limitation, max supported number of TURN Sessions possible is: 524000 (approximately)
+videochat_coturn  | 0: (1): INFO: 
+videochat_coturn  | 
+videochat_coturn  | ==== Show him the instruments, Practical Frost: ====
+videochat_coturn  | 
+videochat_coturn  | 0: (1): INFO: OpenSSL compile-time version: OpenSSL 3.0.15 3 Sep 2024 (0x300000f0)
+videochat_coturn  | 0: (1): INFO: TLS 1.3 supported
+videochat_coturn  | 0: (1): INFO: DTLS 1.2 supported
+videochat_coturn  | 0: (1): INFO: TURN/STUN ALPN supported
+videochat_coturn  | 0: (1): INFO: Third-party authorization (oAuth) supported
+videochat_coturn  | 0: (1): INFO: GCM (AEAD) supported
+videochat_coturn  | 0: (1): INFO: SQLite supported, default database location is /var/lib/coturn/turndb
+videochat_coturn  | 0: (1): INFO: Redis supported
+videochat_coturn  | 0: (1): INFO: PostgreSQL supported
+videochat_coturn  | 0: (1): INFO: MySQL supported
+videochat_coturn  | 0: (1): INFO: MongoDB supported
+videochat_coturn  | 0: (1): INFO: Default Net Engine version: 3 (UDP thread per CPU core)
+videochat_coturn  | 0: (1): INFO: Domain name: 
+videochat_coturn  | 0: (1): INFO: Default realm: video.local
+videochat_coturn  | 0: (1): ERROR: CONFIG: Unknown argument: 
+videochat_coturn  | 0: (1): ERROR: CONFIG: Empty cli-password, and so telnet cli interface is disabled! Please set a non empty cli-password!
+videochat_coturn  | 0: (1): WARNING: cannot find certificate file: turn_server_cert.pem (1)
+videochat_coturn  | 0: (1): WARNING: cannot start TLS and DTLS listeners because certificate file is not set properly
+videochat_coturn  | 0: (1): WARNING: cannot find private key file: turn_server_pkey.pem (1)
+videochat_coturn  | 0: (1): WARNING: cannot start TLS and DTLS listeners because private key file is not set properly
+videochat_coturn  | 0: (1): INFO: Certificate file found: //turn_server_cert.pem
+videochat_coturn  | 0: (1): INFO: Private key file found: //turn_server_pkey.pem
+videochat_coturn  | 0: (1): WARNING: NO EXPLICIT LISTENER ADDRESS(ES) ARE CONFIGURED
+videochat_coturn  | 0: (1): INFO: ===========Discovering listener addresses: =========
+videochat_coturn  | 0: (1): INFO: Listener address to use: 127.0.0.1
+videochat_coturn  | 0: (1): INFO: Listener address to use: 172.20.0.4
+videochat_coturn  | 0: (1): INFO: Listener address to use: ::1
+videochat_coturn  | 0: (1): INFO: =====================================================
+videochat_coturn  | 0: (1): INFO: Total: 1 'real' addresses discovered
+videochat_coturn  | 0: (1): INFO: =====================================================
+videochat_coturn  | 0: (1): WARNING: NO EXPLICIT RELAY ADDRESS(ES) ARE CONFIGURED
+videochat_coturn  | 0: (1): INFO: ===========Discovering relay addresses: =============
+videochat_coturn  | 0: (1): INFO: Relay address to use: 172.20.0.4
+videochat_coturn  | 0: (1): INFO: Relay address to use: ::1
+videochat_coturn  | 0: (1): INFO: =====================================================
+videochat_coturn  | 0: (1): INFO: Total: 2 relay addresses discovered
+videochat_coturn  | 0: (1): INFO: =====================================================
+videochat_coturn  | 0: (1): WARNING: Cannot create pid file: /var/run/turnserver.pid
+videochat_coturn  | 0: (1): INFO: pid file created: /var/tmp/turnserver.pid
+videochat_coturn  | 0: (1): INFO: IO method: epoll (with changelist)
+videochat_coturn  | 0: (1): INFO: Wait for relay ports initialization...
+videochat_coturn  | 0: (1): INFO:   relay 172.20.0.4 initialization...
+videochat_coturn  | 0: (1): INFO:   relay 172.20.0.4 initialization done
+videochat_coturn  | 0: (1): INFO:   relay ::1 initialization...
+videochat_coturn  | 0: (1): INFO:   relay ::1 initialization done
+videochat_coturn  | 0: (1): INFO: Relay ports initialization done
+videochat_coturn  | 0: (20): DEBUG: turn server id=1 created
+videochat_coturn  | 0: (19): DEBUG: turn server id=0 created
+videochat_coturn  | 0: (21): DEBUG: turn server id=2 created
+videochat_coturn  | 0: (22): DEBUG: turn server id=3 created
+videochat_coturn  | 0: (23): DEBUG: turn server id=4 created
+videochat_coturn  | 0: (1): INFO: Total General servers: 10
+videochat_coturn  | 0: (24): DEBUG: turn server id=5 created
+videochat_coturn  | 0: (25): DEBUG: turn server id=6 created
+videochat_coturn  | 0: (26): DEBUG: turn server id=7 created
+videochat_coturn  | 0: (27): DEBUG: turn server id=8 created
+videochat_coturn  | 0: (28): DEBUG: turn server id=9 created
+videochat_coturn  | 0: (1): INFO: Total auth threads: 6
+videochat_coturn  | 0: (1): INFO: prometheus collector disabled, not started

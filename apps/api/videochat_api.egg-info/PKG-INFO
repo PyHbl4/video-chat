@@ -1,0 +1,24 @@
+Metadata-Version: 2.4
+Name: videochat-api
+Version: 0.0.1
+Summary: Self-hosted video chat API service
+Author: Self-Hosted Video Chat
+Keywords: fastapi,webrtc,socket-io
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi<0.116.0,>=0.115.0
+Requires-Dist: uvicorn[standard]<0.31.0,>=0.30.0
+Requires-Dist: python-socketio[asyncio]<6.0.0,>=5.11.0
+Requires-Dist: pydantic<3.0.0,>=2.8.0
+Requires-Dist: pydantic-settings<3.0.0,>=2.4.0
+Requires-Dist: sqlalchemy<3.0.0,>=2.0.32
+Requires-Dist: asyncpg<1.0.0,>=0.29.0
+Requires-Dist: redis<6.0.0,>=5.0.8
+Provides-Extra: dev
+Requires-Dist: ruff<0.7.0,>=0.6.8; extra == "dev"
+Requires-Dist: mypy<2.0.0,>=1.11.2; extra == "dev"
+Requires-Dist: pytest<9.0.0,>=8.3.3; extra == "dev"
+
+# Video Chat API
+
+FastAPI service for the self-hosted video chat platform. Stage 0 exposes health/version endpoints and placeholders for socket.io signaling.

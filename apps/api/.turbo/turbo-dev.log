@@ -1,0 +1,7 @@
+
+> @video-chat/api@0.0.0 dev /Users/maximrunkov/Desktop/projects/video-chat/apps/api
+> uvicorn videochat_api.main:app --reload --host 0.0.0.0 --port 8000
+
+sh: uvicorn: command not found
+[41m[30m ELIFECYCLE [39m[49m [31mCommand failed.[39m
+[43m[30m WARN [39m[49m  Local package.json exists, but node_modules missing, did you mean to install?

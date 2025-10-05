@@ -1,0 +1,124 @@
+version: "3.9"
+
+x-default-environment: &default-environment
+  NODE_ENV: development
+  APP_ENV: development
+
+services:
+  db:
+    image: postgres:16
+    container_name: videochat_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: video
+      POSTGRES_PASSWORD: video
+      POSTGRES_DB: videochat
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U video -d videochat"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    container_name: videochat_redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    image: python:3.11-slim
+    container_name: videochat_api
+    working_dir: /app
+    command: >-
+      sh -c "pip install --no-cache-dir -e .[dev] && uvicorn videochat_api.main:app --host 0.0.0.0 --port 8000 --reload"
+    volumes:
+      - ../../apps/api:/app
+    env_file:
+      - ../../env/api.env.example
+    environment:
+      <<: *default-environment
+      PYTHONUNBUFFERED: "1"
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    image: node:20
+    container_name: videochat_web
+    working_dir: /workspace
+    command: >-
+      bash -lc "corepack enable && pnpm install && pnpm --filter @video-chat/web dev -- --hostname 0.0.0.0 --port 3000"
+    volumes:
+      - ../..:/workspace
+    env_file:
+      - ../../env/web.env.example
+    environment:
+      <<: *default-environment
+      PORT: "3000"
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_started
+
+  admin:
+    image: node:20
+    container_name: videochat_admin
+    working_dir: /workspace
+    command: >-
+      bash -lc "corepack enable && pnpm install && pnpm --filter @video-chat/admin dev -- --hostname 0.0.0.0 --port 3100"
+    volumes:
+      - ../..:/workspace
+    env_file:
+      - ../../env/admin.env.example
+    environment:
+      <<: *default-environment
+      PORT: "3100"
+    ports:
+      - "3100:3100"
+    depends_on:
+      api:
+        condition: service_started
+
+  coturn:
+    image: coturn/coturn:4.6.2
+    container_name: videochat_coturn
+    restart: unless-stopped
+    command: >-
+      turnserver -n --log-file=stdout --listening-port=3478 --min-port=49160 --max-port=49200 --fingerprint
+      --lt-cred-mech --realm video.local --user dev:dev
+    environment:
+      TURN_REALM: video.local
+      TURN_STATIC_USER: dev
+      TURN_STATIC_PASSWORD: dev
+    ports:
+      - "3478:3478"
+      - "3478:3478/udp"
+      - "49160-49200:49160-49200/udp"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "</dev/tcp/127.0.0.1/3478"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  db-data: {}
+  redis-data: {}
