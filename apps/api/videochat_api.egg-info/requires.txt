@@ -6,6 +6,9 @@ pydantic-settings<3.0.0,>=2.4.0
 sqlalchemy<3.0.0,>=2.0.32
 asyncpg<1.0.0,>=0.29.0
 redis<6.0.0,>=5.0.8
+alembic<2.0.0,>=1.13.2
+passlib[argon2]<2.0.0,>=1.7.4
+itsdangerous<3.0.0,>=2.2.0
 
 [dev]
 ruff<0.7.0,>=0.6.8
