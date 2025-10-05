@@ -1,3 +1,150 @@
-node_modules
-.venv
-packages/contracts/.venv
+################################################################################
+# OS / Editors
+################################################################################
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+.history/
+
+################################################################################
+# Node / Turborepo / pnpm
+################################################################################
+node_modules/
+.pnpm-debug.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.tsbuildinfo
+
+# Turborepo cache
+.turbo/
+
+# Lockfiles we DON'T use
+package-lock.json
+yarn.lock
+
+################################################################################
+# Next.js (web/admin)
+################################################################################
+.next/
+out/
+.vercel/
+# next image cache
+**/public/**/.cache/
+
+################################################################################
+# Build outputs (general)
+################################################################################
+dist/
+build/
+coverage/
+.nyc_output/
+
+################################################################################
+# Env files
+################################################################################
+.env
+.env.*
+!.env.example
+env/*.env
+env/*.env.*
+!env/*.env.example
+
+# direnv
+.envrc
+
+################################################################################
+# Python / FastAPI
+################################################################################
+# bytecode / caches
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# virtual envs
+.venv/
+venv/
+.env.python/
+
+# tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+.cache/
+
+# compiled extensions
+*.so
+*.dylib
+
+# local settings
+*.pyproj
+.python-version
+
+# NOTE: Alembic миграции хотим хранить в репо:
+# alembic/versions/*  <-- НЕ игнорируем
+
+################################################################################
+# Docker / Compose
+################################################################################
+# docker artifacts
+**/.dockerignore
+docker-compose.override.yml
+docker-compose.*.override.yml
+# local volumes / scratch dumps
+*.dump
+*.tar
+*.gz
+*.tgz
+
+################################################################################
+# Database / misc
+################################################################################
+*.sqlite
+*.sqlite3
+*.db
+*.log
+logs/
+tmp/
+temp/
+
+# SQL дампы по умолчанию игнорируем,
+# но явные init-файлы держим (ниже исключение)
+*.sql
+!infra/docker/postgres-init.sql
+
+################################################################################
+# Desktop (Tauri / Electron - на будущее)
+################################################################################
+# Tauri/Rust
+**/src-tauri/target/
+**/target/
+# installers / binaries
+*.app
+*.dmg
+*.pkg
+*.msi
+*.exe
+*.AppImage
+*.snap
+*.deb
+*.rpm
+
+################################################################################
+# Misc binary artifacts
+################################################################################
+*.zip
+*.7z
+*.rar
+*.iso
+*.bin
