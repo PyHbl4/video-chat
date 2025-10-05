@@ -1,0 +1,20 @@
+{
+  "name": "self-hosted-videochat",
+  "private": true,
+  "packageManager": "pnpm@9.6.0",
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "format": "turbo run format",
+    "gen:contracts": "pnpm -C packages/contracts run gen",
+    "docker:dev": "docker compose -f infra/docker/docker-compose.dev.yml up --build"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "typescript": "^5.6.3",
+    "eslint": "^9.11.0",
+    "prettier": "^3.3.3"
+  }
+}
