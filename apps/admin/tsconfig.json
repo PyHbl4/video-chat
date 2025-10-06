@@ -7,6 +7,12 @@
     "resolveJsonModule": true,
     "allowJs": true,
     "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    },
     "types": [
       "node"
     ],
