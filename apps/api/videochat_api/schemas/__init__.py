@@ -1,8 +1,21 @@
-from .auth import AuthSession, LoginRequest, RegisterRequest, UserResponse
+from .auth import (
+    DeviceRequest,
+    LoginRequest,
+    LoginResponse,
+    LogoutRequest,
+    RefreshRequest,
+    RefreshResponse,
+    RegisterRequest,
+    UserResponse,
+)
 
 __all__ = [
-    "AuthSession",
+    "DeviceRequest",
     "LoginRequest",
+    "LoginResponse",
+    "LogoutRequest",
+    "RefreshRequest",
+    "RefreshResponse",
     "RegisterRequest",
     "UserResponse",
 ]

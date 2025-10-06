@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, String, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from videochat_api.db.base import Base
 
@@ -20,3 +20,12 @@ class User(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
+
+    devices: Mapped[list["Device"]] = relationship("Device", back_populates="user", cascade="all, delete-orphan")
+    sessions: Mapped[list["AuthSession"]] = relationship(
+        "AuthSession", back_populates="user", cascade="all, delete-orphan"
+    )
+
+
+from .device import Device  # noqa: E402
+from .session import AuthSession  # noqa: E402

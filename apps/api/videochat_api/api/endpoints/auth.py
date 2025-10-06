@@ -2,21 +2,29 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from videochat_api.auth.passwords import hash_password, verify_password
-from videochat_api.auth.session import session_manager
+from videochat_api.auth.session import DeviceInfo, session_manager
 from videochat_api.config import settings
 from videochat_api.dependencies import (
     get_current_user,
     get_rate_limiter,
     get_session_dependency,
 )
-from videochat_api.models import User
-from videochat_api.schemas import AuthSession, LoginRequest, RegisterRequest, UserResponse
+from videochat_api.models import Device, DeviceKind, SessionKind, User
+from videochat_api.schemas import (
+    LoginRequest,
+    LoginResponse,
+    LogoutRequest,
+    RefreshRequest,
+    RefreshResponse,
+    RegisterRequest,
+    UserResponse,
+)
 from videochat_api.services.rate_limiter import RedisRateLimiter
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -55,14 +63,14 @@ async def register_user(
     return UserResponse.model_validate(user)
 
 
-@router.post("/login", response_model=AuthSession)
+@router.post("/login", response_model=LoginResponse)
 async def login_user(
     request: Request,
     response: Response,
     payload: LoginRequest,
     db: AsyncSession = Depends(get_session_dependency),
     rate_limiter: RedisRateLimiter = Depends(get_rate_limiter),
-) -> AuthSession:
+) -> LoginResponse:
     client_host = request.client.host if request.client else "unknown"
     rate_limit = await rate_limiter.check(client_host)
     if not rate_limit.allowed:
@@ -87,42 +95,125 @@ async def login_user(
 
     await rate_limiter.reset(client_host)
 
-    cookie_value, csrf_token = session_manager.create(user.id)
-    response.set_cookie(
-        key=settings.session_cookie_name,
-        value=cookie_value,
-        max_age=settings.session_max_age_seconds,
-        httponly=True,
-        secure=settings.session_cookie_secure,
-        samesite=settings.session_samesite,
-        path="/",
-    )
+    device_payload = payload.device
+    device_kind = DeviceKind(device_payload.kind) if device_payload else DeviceKind.WEB
+    ip_address = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
 
-    return AuthSession(csrf_token=csrf_token)
+    try:
+        if device_kind == DeviceKind.WEB:
+            tokens = await session_manager.create_web_session(db, user, ip_address, user_agent)
+            await db.commit()
+            response.set_cookie(
+                key=settings.session_cookie_name,
+                value=tokens.session_cookie,
+                max_age=settings.session_max_age_seconds,
+                httponly=True,
+                secure=settings.session_cookie_secure,
+                samesite=settings.session_samesite,
+                path="/",
+            )
+            return LoginResponse(
+                csrf_token=tokens.csrf_token,
+                session_expires_in=settings.session_max_age_seconds,
+            )
+
+        device_info = DeviceInfo(
+            kind=device_kind,
+            identifier=device_payload.identifier if device_payload else None,
+            display_name=device_payload.display_name if device_payload else None,
+        )
+        tokens = await session_manager.create_device_session(db, user, device_info, ip_address, user_agent)
+        await db.commit()
+        return LoginResponse(
+            access_token=tokens.access_token,
+            refresh_token=tokens.refresh_token,
+            expires_in=settings.access_token_ttl_seconds,
+            refresh_expires_in=settings.refresh_token_ttl_seconds,
+            device_id=tokens.device_identifier,
+            token_type="bearer",
+        )
+    except Exception:
+        await db.rollback()
+        raise
+
+
+@router.post("/refresh", response_model=RefreshResponse)
+async def refresh_session(
+    payload: RefreshRequest,
+    db: AsyncSession = Depends(get_session_dependency),
+) -> RefreshResponse:
+    session = await session_manager.get_session_by_refresh(db, payload.refresh_token)
+    if session is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
+
+    device_identifier = payload.device_id or ""
+    if session.device_id is not None:
+        device = await db.get(Device, session.device_id)
+        if not device:
+            await session_manager.revoke_session(db, session)
+            await db.commit()
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid device")
+        if payload.device_id and device.identifier != payload.device_id:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Mismatched device")
+        device_identifier = device.identifier
+
+    user = await db.get(User, session.user_id)
+    if not user:
+        await session_manager.revoke_session(db, session)
+        await db.commit()
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+
+    if user.is_blocked:
+        await session_manager.revoke_user_sessions(db, user.id)
+        await db.commit()
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User is blocked")
+
+    tokens = await session_manager.rotate_refresh_token(db, session)
+    await db.commit()
+
+    return RefreshResponse(
+        access_token=tokens.access_token,
+        refresh_token=tokens.refresh_token,
+        expires_in=settings.access_token_ttl_seconds,
+        refresh_expires_in=settings.refresh_token_ttl_seconds,
+        device_id=tokens.device_identifier or device_identifier,
+    )
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 async def logout_user(
     request: Request,
     response: Response,
+    _payload: LogoutRequest | None = Body(default=None),
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session_dependency),
 ) -> Response:
-    header_name = settings.csrf_header
-    csrf_token = request.headers.get(header_name)
-    if not csrf_token:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Missing CSRF token")
+    session = getattr(request.state, "auth_session", None)
+    if session is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session not found")
 
-    raw_session = request.cookies.get(settings.session_cookie_name)
-    if not raw_session or not session_manager.validate_csrf(raw_session, csrf_token):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid CSRF token")
+    if _payload and _payload.refresh_token and session.kind in {SessionKind.DESKTOP, SessionKind.TAURI}:
+        matched = await session_manager.get_session_by_refresh(db, _payload.refresh_token)
+        if not matched or matched.id != session.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid refresh token")
 
-    response.delete_cookie(
-        key=settings.session_cookie_name,
-        httponly=True,
-        secure=settings.session_cookie_secure,
-        samesite=settings.session_samesite,
-        path="/",
-    )
+    if session.kind == SessionKind.WEB:
+        header_name = settings.csrf_header
+        csrf_token = request.headers.get(header_name)
+        if not csrf_token or session.csrf_token != csrf_token:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid CSRF token")
+
+        response.delete_cookie(
+            key=settings.session_cookie_name,
+            httponly=True,
+            secure=settings.session_cookie_secure,
+            samesite=settings.session_samesite,
+            path="/",
+        )
+
+    await session_manager.revoke_session(db, session)
+    await db.commit()
 
     response.status_code = status.HTTP_204_NO_CONTENT
     return response

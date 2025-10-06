@@ -34,7 +34,7 @@ paths:
   /auth/register:
     post:
       summary: Register a new account
-      description: Create a new user and establish a session in a single step.
+      description: Create a new user account.
       operationId: register
       tags:
         - auth
@@ -47,15 +47,10 @@ paths:
       responses:
         '201':
           description: User registered successfully.
-          headers:
-            Set-Cookie:
-              description: Session cookie for subsequent authenticated requests.
-              schema:
-                type: string
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SessionUser'
+                $ref: '#/components/schemas/AuthUser'
         '400':
           description: Invalid payload.
           content:
@@ -71,8 +66,8 @@ paths:
 
   /auth/login:
     post:
-      summary: Authenticate with email and password
-      description: Exchange credentials for a logged-in session.
+      summary: Authenticate with username or email
+      description: Exchange credentials for a session cookie (web) or JWT pair (desktop clients).
       operationId: login
       tags:
         - auth
@@ -87,15 +82,54 @@ paths:
           description: Credentials accepted; session established.
           headers:
             Set-Cookie:
-              description: Session cookie for subsequent authenticated requests.
+              description: Present for web logins; issues httpOnly session cookie with CSRF token in body.
               schema:
                 type: string
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SessionUser'
+                $ref: '#/components/schemas/AuthLoginResponse'
         '401':
           description: Invalid credentials.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: User is blocked.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/refresh:
+    post:
+      summary: Rotate refresh token
+      description: Exchange a valid refresh token for a new access token and refresh token.
+      operationId: refreshAuth
+      tags:
+        - auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRefresh'
+      responses:
+        '200':
+          description: New token pair issued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthRefreshResponse'
+        '401':
+          description: Refresh token invalid or expired.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: User is blocked.
           content:
             application/json:
               schema:
@@ -104,10 +138,16 @@ paths:
   /auth/logout:
     post:
       summary: Terminate the current session
-      description: Invalidates the active session cookie and clears authentication state.
+      description: Invalidates the active session cookie or refresh token for the caller's device.
       operationId: logout
       tags:
         - auth
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthLogout'
       responses:
         '204':
           description: Session terminated.
@@ -117,11 +157,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '403':
+          description: CSRF or refresh token validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
-  /me:
+  /auth/me:
     get:
       summary: Retrieve the current authenticated user
-      description: Returns the session user object if the requester is authenticated.
+      description: Returns the authenticated user if the requester holds a valid session.
       operationId: getCurrentUser
       tags:
         - auth
@@ -131,7 +177,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SessionUser'
+                $ref: '#/components/schemas/AuthUser'
         '401':
           description: No valid session available.
           content:
@@ -474,6 +520,30 @@ components:
           format: date-time
           example: 2024-01-18T14:12:03Z
 
+    AuthUser:
+      type: object
+      required:
+        - id
+        - username
+        - email
+        - is_blocked
+      properties:
+        id:
+          type: integer
+          example: 42
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+          example: maxim
+        email:
+          type: string
+          format: email
+          example: maxim@example.com
+        is_blocked:
+          type: boolean
+          example: false
+
     AuthRegister:
       type: object
       required:
@@ -488,54 +558,149 @@ components:
         username:
           type: string
           minLength: 3
-          maxLength: 32
+          maxLength: 50
           example: maxim
-        displayName:
-          type: string
-          nullable: true
-          example: Maxim Runkov
         password:
           type: string
           format: password
           minLength: 8
           example: use-a-strong-password
 
+    AuthDevice:
+      type: object
+      description: Optional device metadata used to scope refresh tokens.
+      properties:
+        identifier:
+          type: string
+          maxLength: 128
+          nullable: true
+          example: 58c5d1c2f2b64d589a3b85ab
+        kind:
+          type: string
+          enum:
+            - web
+            - desktop
+            - tauri
+          default: web
+        display_name:
+          type: string
+          maxLength: 100
+          nullable: true
+          example: MacBook Pro
+
     AuthLogin:
       type: object
       required:
-        - email
+        - identifier
         - password
       properties:
-        email:
+        identifier:
           type: string
-          format: email
-          example: maxim@example.com
+          description: Username or email address.
+          example: maxim
         password:
           type: string
           format: password
+          minLength: 8
           example: use-a-strong-password
-        rememberMe:
-          type: boolean
-          default: false
+        device:
+          $ref: '#/components/schemas/AuthDevice'
 
-    SessionUser:
+    AuthLoginResponse:
+      type: object
+      properties:
+        csrf_token:
+          type: string
+          nullable: true
+          example: _pMtJY45yFomN6c8tZp0aQY8w4fT7b0z58aW2g
+        session_expires_in:
+          type: integer
+          nullable: true
+          example: 604800
+        access_token:
+          type: string
+          nullable: true
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        refresh_token:
+          type: string
+          nullable: true
+          example: K3Q4YjsU1q0zvdZ-bm1FvQ
+        expires_in:
+          type: integer
+          nullable: true
+          example: 900
+        refresh_expires_in:
+          type: integer
+          nullable: true
+          example: 2592000
+        device_id:
+          type: string
+          nullable: true
+          example: 58c5d1c2f2b64d589a3b85ab
+        token_type:
+          type: string
+          enum:
+            - bearer
+          nullable: true
+
+    AuthRefresh:
       type: object
       required:
-        - user
-        - sessionId
-        - expiresAt
+        - refresh_token
       properties:
-        sessionId:
+        refresh_token:
           type: string
-          format: uuid
-          example: d743f566-b0e7-4f3c-98cb-27ef7ad0b5a4
-        expiresAt:
+          minLength: 16
+          example: K3Q4YjsU1q0zvdZ-bm1FvQ
+        device_id:
           type: string
-          format: date-time
-          example: 2024-02-18T14:12:03Z
-        user:
-          $ref: '#/components/schemas/User'
+          maxLength: 128
+          nullable: true
+          example: 58c5d1c2f2b64d589a3b85ab
 
+    AuthRefreshResponse:
+      type: object
+      required:
+        - access_token
+        - refresh_token
+        - expires_in
+        - refresh_expires_in
+        - device_id
+        - token_type
+      properties:
+        access_token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        refresh_token:
+          type: string
+          example: M2J6sAFVY6hFIZq6Q1l5sg
+        expires_in:
+          type: integer
+          example: 900
+        refresh_expires_in:
+          type: integer
+          example: 2592000
+        device_id:
+          type: string
+          example: 58c5d1c2f2b64d589a3b85ab
+        token_type:
+          type: string
+          enum:
+            - bearer
+
+    AuthLogout:
+      type: object
+      properties:
+        refresh_token:
+          type: string
+          minLength: 16
+          nullable: true
+          example: K3Q4YjsU1q0zvdZ-bm1FvQ
+        device_id:
+          type: string
+          maxLength: 128
+          nullable: true
+          example: 58c5d1c2f2b64d589a3b85ab
     Friend:
       type: object
       required:

@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
+from datetime import datetime, timezone
 
-from fastapi import Depends, HTTPException, Request
+from fastapi import Depends, HTTPException, Request, status
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from videochat_api.auth.session import session_manager
 from videochat_api.config import settings
 from videochat_api.db.session import get_db_session
-from videochat_api.models import User
+from videochat_api.models import AuthSession, User
 from videochat_api.services.rate_limiter import RedisRateLimiter
 
 
@@ -32,29 +33,69 @@ async def get_session_dependency() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
+async def _resolve_session_from_authorization(
+    db: AsyncSession,
+    authorization: str,
+) -> AuthSession | None:
+    if not authorization.lower().startswith("bearer "):
+        return None
+
+    token = authorization.split(" ", 1)[1].strip()
+    if not token:
+        return None
+
+    payload = session_manager.decode_access_token(token)
+    if not payload:
+        return None
+
+    session_id = payload.get("sid")
+    subject = payload.get("sub")
+    if not session_id or not subject:
+        return None
+
+    session = await db.get(AuthSession, str(session_id))
+    if not session or session.revoked_at:
+        return None
+
+    if session.expires_at and session.expires_at < datetime.now(timezone.utc):
+        return None
+
+    if str(session.user_id) != str(subject):
+        return None
+
+    return session
+
+
 async def get_current_user(
     request: Request,
     db: AsyncSession = Depends(get_session_dependency),
 ) -> User:
-    cookie_name = settings.session_cookie_name
-    raw_session = request.cookies.get(cookie_name)
-    if not raw_session:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    session: AuthSession | None = None
 
-    data = session_manager.load(raw_session)
-    if not data:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session")
+    auth_header = request.headers.get("Authorization")
+    if auth_header:
+        session = await _resolve_session_from_authorization(db, auth_header)
 
-    user_id = data.get("user_id")
-    if not isinstance(user_id, int):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session")
+    if session is None:
+        cookie_name = settings.session_cookie_name
+        raw_cookie = request.cookies.get(cookie_name)
+        if not raw_cookie:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+        session = await session_manager.get_session_by_cookie(db, raw_cookie)
+        if session is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session")
 
-    user = await db.get(User, user_id)
+    user = await db.get(User, session.user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
     if user.is_blocked:
+        await session_manager.revoke_user_sessions(db, user.id)
+        await db.commit()
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User is blocked")
 
-    request.state.session_data = data
+    session_manager.touch(session)
+    request.state.auth_session = session
+    request.state.db_session = db
+
     return user
