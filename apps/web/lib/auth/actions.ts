@@ -1,5 +1,3 @@
-"use server"
-
 import { ApiError } from "@video-chat/contracts"
 import { cookies } from "next/headers"
 
@@ -10,13 +8,9 @@ import { getInitialSession } from "@/lib/session/server"
 import { createEmptySession, deriveTokensFromLogin, type SessionSnapshot } from "@/lib/session/types"
 
 import type { FieldErrors, FormState } from "./types"
-import { createInitialFormState } from "./types"
 
 export type LoginFields = "identifier" | "password"
 export type RegisterFields = "email" | "username" | "password"
-
-export const initialLoginState = createInitialFormState<LoginFields>()
-export const initialRegisterState = createInitialFormState<RegisterFields>()
 
 function normalizeString(value: FormDataEntryValue | null): string {
   return typeof value === "string" ? value.trim() : ""
@@ -51,6 +45,8 @@ export async function loginAction(
   _prevState: FormState<LoginFields>,
   formData: FormData
 ): Promise<FormState<LoginFields>> {
+  "use server"
+
   const identifier = normalizeString(formData.get("identifier"))
   const password = normalizeString(formData.get("password"))
 
@@ -142,6 +138,8 @@ export async function registerAction(
   _prevState: FormState<RegisterFields>,
   formData: FormData
 ): Promise<FormState<RegisterFields>> {
+  "use server"
+
   const email = normalizeString(formData.get("email"))
   const username = normalizeString(formData.get("username"))
   const password = normalizeString(formData.get("password"))
@@ -204,6 +202,8 @@ export async function registerAction(
 }
 
 export async function logoutAction(): Promise<SessionSnapshot> {
+  "use server"
+
   try {
     const auth = createServerAuthApi()
     const result = await auth.logout()

@@ -26,7 +26,8 @@ import {
 } from "@video-chat/ui"
 
 import { useSession } from "@/hooks/use-session"
-import { initialLoginState, loginAction } from "@/lib/auth/actions"
+import { loginAction } from "@/lib/auth/actions"
+import { initialLoginState } from "@/lib/auth/state"
 import type { LoginFields } from "@/lib/auth/actions"
 
 function SubmitButton({ children }: { children: React.ReactNode }) {

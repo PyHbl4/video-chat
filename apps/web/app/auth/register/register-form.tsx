@@ -25,7 +25,8 @@ import {
   Spinner
 } from "@video-chat/ui"
 
-import { initialRegisterState, registerAction } from "@/lib/auth/actions"
+import { registerAction } from "@/lib/auth/actions"
+import { initialRegisterState } from "@/lib/auth/state"
 import type { RegisterFields } from "@/lib/auth/actions"
 
 function SubmitButton({ children }: { children: React.ReactNode }) {
