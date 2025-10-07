@@ -19,7 +19,7 @@ export default async function RootLayout({
 
   return (
     <html lang="ru">
-      <body>
+      <body className="min-h-screen bg-background text-foreground antialiased">
         <SessionProvider initialSession={session}>{children}</SessionProvider>
       </body>
     </html>

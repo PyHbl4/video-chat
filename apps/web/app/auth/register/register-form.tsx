@@ -1,7 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { useFormState, useFormStatus } from "react-dom"
+import { useActionState } from "react"
+import { useFormStatus } from "react-dom"
 
 import {
   Alert,
@@ -38,7 +39,7 @@ function SubmitButton({ children }: { children: React.ReactNode }) {
 }
 
 export function RegisterForm() {
-  const [state, formAction] = useFormState(registerAction, initialRegisterState)
+  const [state, formAction] = useActionState(registerAction, initialRegisterState)
   const fieldErrors = state.fieldErrors ?? ({} as Record<RegisterFields, string | undefined>)
 
   return (

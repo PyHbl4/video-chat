@@ -36,6 +36,17 @@ function mergeFieldErrors<T extends string>(
   return result
 }
 
+function handleUnexpectedError<T extends string>(
+  error: unknown,
+  fallbackMessage: string
+): FormState<T> {
+  console.error("[auth] unexpected error", error)
+  return {
+    status: "error",
+    message: fallbackMessage
+  }
+}
+
 export async function loginAction(
   _prevState: FormState<LoginFields>,
   formData: FormData
@@ -123,7 +134,7 @@ export async function loginAction(
       }
     }
 
-    throw error
+    return handleUnexpectedError<LoginFields>(error, "Не удалось войти. Повторите попытку позже.")
   }
 }
 
@@ -185,7 +196,10 @@ export async function registerAction(
       }
     }
 
-    throw error
+    return handleUnexpectedError<RegisterFields>(
+      error,
+      "Не удалось зарегистрироваться. Попробуйте ещё раз позже."
+    )
   }
 }
 

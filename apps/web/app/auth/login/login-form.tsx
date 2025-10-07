@@ -2,8 +2,8 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useEffect } from "react"
-import { useFormState, useFormStatus } from "react-dom"
+import { useActionState, useEffect } from "react"
+import { useFormStatus } from "react-dom"
 
 import {
   Alert,
@@ -42,7 +42,7 @@ function SubmitButton({ children }: { children: React.ReactNode }) {
 export function LoginForm() {
   const router = useRouter()
   const { setSession } = useSession()
-  const [state, formAction] = useFormState(loginAction, initialLoginState)
+  const [state, formAction] = useActionState(loginAction, initialLoginState)
 
   useEffect(() => {
     if (state.status === "success" && state.session) {
