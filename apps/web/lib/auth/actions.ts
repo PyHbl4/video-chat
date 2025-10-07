@@ -1,3 +1,5 @@
+"use server"
+
 import { ApiError } from "@video-chat/contracts"
 import { cookies } from "next/headers"
 
@@ -45,7 +47,6 @@ export async function loginAction(
   _prevState: FormState<LoginFields>,
   formData: FormData
 ): Promise<FormState<LoginFields>> {
-  "use server"
 
   const identifier = normalizeString(formData.get("identifier"))
   const password = normalizeString(formData.get("password"))
@@ -138,7 +139,6 @@ export async function registerAction(
   _prevState: FormState<RegisterFields>,
   formData: FormData
 ): Promise<FormState<RegisterFields>> {
-  "use server"
 
   const email = normalizeString(formData.get("email"))
   const username = normalizeString(formData.get("username"))
@@ -202,7 +202,6 @@ export async function registerAction(
 }
 
 export async function logoutAction(): Promise<SessionSnapshot> {
-  "use server"
 
   try {
     const auth = createServerAuthApi()
