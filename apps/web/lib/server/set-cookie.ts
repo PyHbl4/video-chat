@@ -1,6 +1,7 @@
 import { cookies } from "next/headers"
 
 import { isProduction } from "../env"
+import { authDebug, isAuthDebugEnabled } from "./debug-logger"
 
 type SameSite = "lax" | "strict" | "none"
 
@@ -22,8 +23,15 @@ export async function applyResponseCookies(response: Response, store?: CookieSto
   const targetStore = store ?? (await cookies())
   const setCookieHeader = collectSetCookieHeaders(response.headers)
   if (setCookieHeader.length === 0) {
+    if (isAuthDebugEnabled()) {
+      authDebug("applyResponseCookies: no Set-Cookie headers detected", {
+        responseHeaders: Array.from(response.headers.keys())
+      })
+    }
     return
   }
+
+  const appliedCookies: Array<{ name: string; attributes: Partial<ParsedCookie> }> = []
 
   for (const entry of setCookieHeader) {
     const parsed = parseSetCookie(entry)
@@ -39,6 +47,18 @@ export async function applyResponseCookies(response: Response, store?: CookieSto
       secure: parsed.secure ?? isProduction,
       expires: parsed.expires,
       maxAge: parsed.maxAge
+    })
+
+    if (isAuthDebugEnabled()) {
+      const { name, value: _value, ...attributes } = parsed
+      appliedCookies.push({ name, attributes })
+    }
+  }
+
+  if (isAuthDebugEnabled()) {
+    authDebug("applyResponseCookies: applied cookies", {
+      count: appliedCookies.length,
+      cookies: appliedCookies
     })
   }
 }

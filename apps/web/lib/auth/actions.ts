@@ -6,6 +6,7 @@ import { applyResponseCookies, deleteCookies } from "@/lib/server/set-cookie"
 import { createServerAuthApi } from "@/lib/api/server"
 import { getInitialSession } from "@/lib/session/server"
 import { createEmptySession, deriveTokensFromLogin, type SessionSnapshot } from "@/lib/session/types"
+import { authDebug, isAuthDebugEnabled } from "@/lib/server/debug-logger"
 
 import type { FieldErrors, FormState } from "./types"
 
@@ -94,8 +95,22 @@ export async function loginActionWithDependencies(
   }
 
   try {
+    if (isAuthDebugEnabled()) {
+      authDebug("loginAction: received form data", {
+        identifierLength: identifier.length,
+        hasPassword: password.length > 0
+      })
+    }
+
     const cookieStore = await deps.getCookieStore()
     const auth = deps.createAuthApi()
+
+    if (isAuthDebugEnabled()) {
+      authDebug("loginAction: sending login request", {
+        identifierLength: identifier.length
+      })
+    }
+
     const { data, response } = await auth.login({
       identifier,
       password,
@@ -103,6 +118,14 @@ export async function loginActionWithDependencies(
         kind: "web"
       }
     })
+
+    if (isAuthDebugEnabled()) {
+      authDebug("loginAction: login response received", {
+        status: response.status,
+        hasSetCookieHeader: response.headers.has("set-cookie"),
+        headerKeys: Array.from(response.headers.keys())
+      })
+    }
 
     await deps.applyCookiesFromResponse(response, cookieStore)
 
@@ -116,16 +139,35 @@ export async function loginActionWithDependencies(
         secure: isProduction,
         path: "/"
       })
+
+      if (isAuthDebugEnabled()) {
+        authDebug("loginAction: csrf token cookie stored", {
+          present: true,
+          length: csrfToken.length
+        })
+      }
     } else {
       try {
         cookieStore.delete(CSRF_COOKIE_NAME)
       } catch {
         // ignore
       }
+
+      if (isAuthDebugEnabled()) {
+        authDebug("loginAction: csrf token missing from response")
+      }
     }
 
     const session = await deps.getInitialSession()
     const tokens = deriveTokensFromLogin(data)
+
+    if (isAuthDebugEnabled()) {
+      authDebug("loginAction: derived tokens snapshot", {
+        hasAccessToken: Boolean(tokens.accessToken),
+        hasRefreshToken: Boolean(tokens.refreshToken)
+      })
+    }
+
     const nextSession: SessionSnapshot = {
       ...session,
       csrfToken: csrfToken ?? session.csrfToken,
