@@ -24,7 +24,15 @@ class AuthSession(Base):
     device_id: Mapped[int | None] = mapped_column(
         ForeignKey("devices.id", ondelete="CASCADE"), nullable=True, index=True
     )
-    kind: Mapped[SessionKind] = mapped_column(Enum(SessionKind, name="session_kind"), nullable=False)
+    kind: Mapped[SessionKind] = mapped_column(
+        Enum(
+            SessionKind,
+            name="session_kind",
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+            validate_strings=True,
+        ),
+        nullable=False,
+    )
     session_token_hash: Mapped[str | None] = mapped_column(String(128), nullable=True, unique=True)
     csrf_token: Mapped[str | None] = mapped_column(String(128), nullable=True)
     refresh_token_hash: Mapped[str | None] = mapped_column(String(128), nullable=True, unique=True)

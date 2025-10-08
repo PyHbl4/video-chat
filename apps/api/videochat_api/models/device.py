@@ -21,7 +21,15 @@ class Device(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
     identifier: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
-    kind: Mapped[DeviceKind] = mapped_column(Enum(DeviceKind, name="device_kind"), nullable=False)
+    kind: Mapped[DeviceKind] = mapped_column(
+        Enum(
+            DeviceKind,
+            name="device_kind",
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+            validate_strings=True,
+        ),
+        nullable=False,
+    )
     display_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     user_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)
     refresh_token_hash: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
