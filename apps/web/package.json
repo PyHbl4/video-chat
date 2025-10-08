@@ -8,7 +8,8 @@
     "start": "next start -p 3000",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "format": "prettier --check ."
+    "format": "prettier --check .",
+    "test:login-smoke": "node --loader ./scripts/ts-loader.mjs ./scripts/login-action.smoke.ts"
   },
   "dependencies": {
     "@video-chat/ui": "workspace:*",

@@ -4,6 +4,8 @@ import { isProduction } from "../env"
 
 type SameSite = "lax" | "strict" | "none"
 
+type CookieStore = Awaited<ReturnType<typeof cookies>>
+
 interface ParsedCookie {
   name: string
   value: string
@@ -16,19 +18,18 @@ interface ParsedCookie {
   sameSite?: SameSite
 }
 
-export async function applyResponseCookies(response: Response) {
-  const setCookieHeader = typeof response.headers.getSetCookie === "function" ? response.headers.getSetCookie() : []
-  if (!setCookieHeader || setCookieHeader.length === 0) {
+export async function applyResponseCookies(response: Response, store?: CookieStore) {
+  const targetStore = store ?? (await cookies())
+  const setCookieHeader = collectSetCookieHeaders(response.headers)
+  if (setCookieHeader.length === 0) {
     return
   }
-
-  const store = await cookies()
 
   for (const entry of setCookieHeader) {
     const parsed = parseSetCookie(entry)
     if (!parsed) continue
 
-    store.set({
+    targetStore.set({
       name: parsed.name,
       value: parsed.value,
       path: parsed.path ?? "/",
@@ -51,6 +52,78 @@ export async function deleteCookies(names: string[]) {
       // ignore
     }
   }
+}
+
+function collectSetCookieHeaders(headers: Headers): string[] {
+  const values: string[] = []
+  const seen = new Set<string>()
+
+  const pushValue = (value: string | null | undefined) => {
+    if (!value) return
+
+    for (const entry of splitCookiesString(value)) {
+      const normalized = entry.trim()
+      if (!normalized || seen.has(normalized)) continue
+
+      seen.add(normalized)
+      values.push(normalized)
+    }
+  }
+
+  const getSetCookie = (headers as unknown as { getSetCookie?: () => string[] | undefined }).getSetCookie
+  if (typeof getSetCookie === "function") {
+    for (const header of getSetCookie() ?? []) {
+      pushValue(header)
+    }
+  }
+
+  pushValue(headers.get("set-cookie"))
+
+  headers.forEach((value, key) => {
+    if (key.toLowerCase() === "set-cookie") {
+      pushValue(value)
+    }
+  })
+
+  return values
+}
+
+function splitCookiesString(input: string): string[] {
+  const result: string[] = []
+  let start = 0
+  let position = 0
+  let inExpires = false
+
+  while (position < input.length) {
+    const char = input[position]
+
+    if ((char === "e" || char === "E") && input.slice(position, position + 8).toLowerCase() === "expires=") {
+      inExpires = true
+      position += 8
+      continue
+    }
+
+    if (char === ";") {
+      inExpires = false
+    }
+
+    if (char === "," && !inExpires) {
+      const value = input.slice(start, position).trim()
+      if (value) {
+        result.push(value)
+      }
+      start = position + 1
+    }
+
+    position += 1
+  }
+
+  const last = input.slice(start).trim()
+  if (last) {
+    result.push(last)
+  }
+
+  return result
 }
 
 function parseSetCookie(cookie: string): ParsedCookie | null {

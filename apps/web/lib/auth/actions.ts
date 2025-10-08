@@ -1,8 +1,6 @@
 "use server"
 
 import { ApiError } from "@video-chat/contracts"
-import { cookies } from "next/headers"
-
 import { CSRF_COOKIE_NAME, isProduction } from "@/lib/env"
 import { applyResponseCookies, deleteCookies } from "@/lib/server/set-cookie"
 import { createServerAuthApi } from "@/lib/api/server"
@@ -10,6 +8,25 @@ import { getInitialSession } from "@/lib/session/server"
 import { createEmptySession, deriveTokensFromLogin, type SessionSnapshot } from "@/lib/session/types"
 
 import type { FieldErrors, FormState } from "./types"
+
+type CookieStore = Awaited<ReturnType<typeof import("next/headers").cookies>>
+
+interface LoginActionDependencies {
+  getCookieStore: () => Promise<CookieStore>
+  createAuthApi: typeof createServerAuthApi
+  getInitialSession: typeof getInitialSession
+  applyCookiesFromResponse: (response: Response, store: CookieStore) => Promise<void>
+}
+
+const defaultLoginActionDependencies: LoginActionDependencies = {
+  getCookieStore: async () => {
+    const { cookies } = await import("next/headers")
+    return cookies()
+  },
+  createAuthApi: createServerAuthApi,
+  getInitialSession,
+  applyCookiesFromResponse: (response, store) => applyResponseCookies(response, store)
+}
 
 export type LoginFields = "identifier" | "password"
 export type RegisterFields = "email" | "username" | "password"
@@ -44,6 +61,14 @@ function handleUnexpectedError<T extends string>(
 }
 
 export async function loginAction(
+  prevState: FormState<LoginFields>,
+  formData: FormData
+): Promise<FormState<LoginFields>> {
+  return loginActionWithDependencies(defaultLoginActionDependencies, prevState, formData)
+}
+
+export async function loginActionWithDependencies(
+  deps: LoginActionDependencies,
   _prevState: FormState<LoginFields>,
   formData: FormData
 ): Promise<FormState<LoginFields>> {
@@ -69,7 +94,8 @@ export async function loginAction(
   }
 
   try {
-    const auth = createServerAuthApi()
+    const cookieStore = await deps.getCookieStore()
+    const auth = deps.createAuthApi()
     const { data, response } = await auth.login({
       identifier,
       password,
@@ -78,10 +104,9 @@ export async function loginAction(
       }
     })
 
-    await applyResponseCookies(response)
+    await deps.applyCookiesFromResponse(response, cookieStore)
 
     const csrfToken = data.csrf_token ?? null
-    const cookieStore = await cookies()
     if (csrfToken) {
       cookieStore.set({
         name: CSRF_COOKIE_NAME,
@@ -99,7 +124,7 @@ export async function loginAction(
       }
     }
 
-    const session = await getInitialSession()
+    const session = await deps.getInitialSession()
     const tokens = deriveTokensFromLogin(data)
     const nextSession: SessionSnapshot = {
       ...session,
