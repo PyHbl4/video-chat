@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import logging
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
+from redis.exceptions import RedisError
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,9 +27,11 @@ from videochat_api.schemas import (
     RegisterRequest,
     UserResponse,
 )
-from videochat_api.services.rate_limiter import RedisRateLimiter
+from videochat_api.services.rate_limiter import RateLimitResult, RateLimiter
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+logger = logging.getLogger(__name__)
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -69,10 +73,22 @@ async def login_user(
     response: Response,
     payload: LoginRequest,
     db: AsyncSession = Depends(get_session_dependency),
-    rate_limiter: RedisRateLimiter = Depends(get_rate_limiter),
+    rate_limiter: RateLimiter = Depends(get_rate_limiter),
 ) -> LoginResponse:
     client_host = request.client.host if request.client else "unknown"
-    rate_limit = await rate_limiter.check(client_host)
+    try:
+        rate_limit = await rate_limiter.check(client_host)
+    except RedisError:
+        logger.warning(
+            "Не удалось проверить лимит для %s: Redis недоступен, пропускаем ограничение",
+            client_host,
+            exc_info=True,
+        )
+        rate_limit = RateLimitResult(
+            allowed=True,
+            remaining=getattr(rate_limiter, "limit", 0),
+            retry_after=0,
+        )
     if not rate_limit.allowed:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -93,7 +109,14 @@ async def login_user(
     if user.is_blocked:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User is blocked")
 
-    await rate_limiter.reset(client_host)
+    try:
+        await rate_limiter.reset(client_host)
+    except RedisError:
+        logger.warning(
+            "Не удалось сбросить лимит для %s: Redis недоступен, пропускаем сброс",
+            client_host,
+            exc_info=True,
+        )
 
     device_payload = payload.device
     device_kind = DeviceKind(device_payload.kind) if device_payload else DeviceKind.WEB

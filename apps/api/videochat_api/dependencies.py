@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
+import logging
 
 from fastapi import Depends, HTTPException, Request, status
 from redis.asyncio import Redis
@@ -11,20 +12,28 @@ from videochat_api.auth.session import session_manager
 from videochat_api.config import settings
 from videochat_api.db.session import get_db_session
 from videochat_api.models import AuthSession, User
-from videochat_api.services.rate_limiter import RedisRateLimiter
+from videochat_api.services.rate_limiter import NullRateLimiter, RateLimiter, RedisRateLimiter
 
 
-async def get_redis(request: Request) -> Redis:
-    redis: Redis = request.app.state.redis
+logger = logging.getLogger(__name__)
+
+
+async def get_redis(request: Request) -> Redis | None:
+    redis: Redis | None = getattr(request.app.state, "redis", None)
     return redis
 
 
-async def get_rate_limiter(redis: Redis = Depends(get_redis)) -> RedisRateLimiter:
+async def get_rate_limiter(redis: Redis | None = Depends(get_redis)) -> RateLimiter:
+    limit = settings.login_rate_limit_attempts
+    window = settings.login_rate_limit_window_seconds
+    if redis is None:
+        logger.warning("Redis недоступен, rate limiter переходит в разрешающий режим")
+        return NullRateLimiter(limit=limit)
     return RedisRateLimiter(
         redis=redis,
         namespace="login",
-        limit=settings.login_rate_limit_attempts,
-        window_seconds=settings.login_rate_limit_window_seconds,
+        limit=limit,
+        window_seconds=window,
     )
 
 

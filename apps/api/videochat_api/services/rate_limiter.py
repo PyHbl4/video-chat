@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Protocol
 
 from redis.asyncio import Redis
 
@@ -14,6 +15,14 @@ class RateLimitResult:
     allowed: bool
     remaining: int
     retry_after: int
+
+
+class RateLimiter(Protocol):
+    limit: int
+
+    async def check(self, identifier: str) -> RateLimitResult: ...
+
+    async def reset(self, identifier: str) -> None: ...
 
 
 class RedisRateLimiter:
@@ -37,3 +46,14 @@ class RedisRateLimiter:
     async def reset(self, identifier: str) -> None:
         redis_key = _key(self.namespace, identifier)
         await self.redis.delete(redis_key)
+
+
+class NullRateLimiter:
+    def __init__(self, limit: int) -> None:
+        self.limit = limit
+
+    async def check(self, identifier: str) -> RateLimitResult:
+        return RateLimitResult(allowed=True, remaining=self.limit, retry_after=0)
+
+    async def reset(self, identifier: str) -> None:
+        return None
