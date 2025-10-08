@@ -70,6 +70,7 @@ services:
       - ../..:/workspace
     env_file:
       - ../../env/web.env.example
+      - ../../env/web.env.local
     environment:
       <<: *default-environment
       CI: "true"
