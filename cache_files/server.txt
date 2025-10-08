@@ -1,0 +1,352 @@
+maximrunkov@Mac-mini-Maxim video-chat % pnpm dev:python
+
+> self-hosted-videochat@ dev:python /Users/maximrunkov/Desktop/projects/video-chat
+> docker compose -f infra/docker/docker-compose.dev.yml up --build
+
+WARN[0000] /Users/maximrunkov/Desktop/projects/video-chat/infra/docker/docker-compose.dev.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+[+] Running 4/4
+ ✔ Container videochat_db      Created                                                                                                                                                                                      0.0s 
+ ✔ Container videochat_coturn  Created                                                                                                                                                                                      0.0s 
+ ✔ Container videochat_redis   Created                                                                                                                                                                                      0.0s 
+ ✔ Container videochat_api     Created                                                                                                                                                                                      0.0s 
+Attaching to videochat_api, videochat_coturn, videochat_db, videochat_redis
+videochat_db      | 
+videochat_db      | PostgreSQL Database directory appears to contain a database; Skipping initialization
+videochat_db      | 
+videochat_redis   | 1:C 08 Oct 2025 21:50:23.322 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+videochat_redis   | 1:C 08 Oct 2025 21:50:23.322 * Redis version=7.4.6, bits=64, commit=00000000, modified=0, pid=1, just started
+videochat_redis   | 1:C 08 Oct 2025 21:50:23.322 * Configuration loaded
+videochat_redis   | 1:M 08 Oct 2025 21:50:23.322 * monotonic clock: POSIX clock_gettime
+videochat_redis   | 1:M 08 Oct 2025 21:50:23.324 * Running mode=standalone, port=6379.
+videochat_redis   | 1:M 08 Oct 2025 21:50:23.324 * Server initialized
+videochat_redis   | 1:M 08 Oct 2025 21:50:23.324 * Loading RDB produced by version 7.4.6
+videochat_redis   | 1:M 08 Oct 2025 21:50:23.324 * RDB age 173 seconds
+videochat_redis   | 1:M 08 Oct 2025 21:50:23.324 * RDB memory usage when created 1.08 Mb
+videochat_redis   | 1:M 08 Oct 2025 21:50:23.324 * Done loading RDB, keys loaded: 0, keys expired: 0.
+videochat_redis   | 1:M 08 Oct 2025 21:50:23.325 * DB loaded from disk: 0.000 seconds
+videochat_redis   | 1:M 08 Oct 2025 21:50:23.325 * Ready to accept connections tcp
+videochat_db      | 2025-10-08 21:50:23.375 UTC [1] LOG:  starting PostgreSQL 16.10 (Debian 16.10-1.pgdg13+1) on aarch64-unknown-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+videochat_db      | 2025-10-08 21:50:23.375 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+videochat_db      | 2025-10-08 21:50:23.375 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+videochat_db      | 2025-10-08 21:50:23.382 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+videochat_db      | 2025-10-08 21:50:23.388 UTC [28] LOG:  database system was shut down at 2025-10-08 21:47:30 UTC
+videochat_db      | 2025-10-08 21:50:23.392 UTC [1] LOG:  database system is ready to accept connections
+videochat_coturn  | 0: (1): INFO: System cpu num is 10
+videochat_coturn  | 0: (1): INFO: System cpu num is 10
+videochat_coturn  | 0: (1): INFO: System enable num is 10
+videochat_coturn  | 0: (1): WARNING: Cannot find config file: turnserver.conf. Default and command-line settings will be used.
+videochat_coturn  | 0: (1): INFO: Coturn Version Coturn-4.6.2 'Gorst'
+videochat_coturn  | 0: (1): INFO: Max number of open files/sockets allowed for this process: 1048576
+videochat_coturn  | 0: (1): INFO: Due to the open files/sockets limitation, max supported number of TURN Sessions possible is: 524000 (approximately)
+videochat_coturn  | 0: (1): INFO: 
+videochat_coturn  | 
+videochat_coturn  | ==== Show him the instruments, Practical Frost: ====
+videochat_coturn  | 
+videochat_coturn  | 0: (1): INFO: OpenSSL compile-time version: OpenSSL 3.0.15 3 Sep 2024 (0x300000f0)
+videochat_coturn  | 0: (1): INFO: TLS 1.3 supported
+videochat_coturn  | 0: (1): INFO: DTLS 1.2 supported
+videochat_coturn  | 0: (1): INFO: TURN/STUN ALPN supported
+videochat_coturn  | 0: (1): INFO: Third-party authorization (oAuth) supported
+videochat_coturn  | 0: (1): INFO: GCM (AEAD) supported
+videochat_coturn  | 0: (1): INFO: SQLite supported, default database location is /var/lib/coturn/turndb
+videochat_coturn  | 0: (1): INFO: Redis supported
+videochat_coturn  | 0: (1): INFO: PostgreSQL supported
+videochat_coturn  | 0: (1): INFO: MySQL supported
+videochat_coturn  | 0: (1): INFO: MongoDB supported
+videochat_coturn  | 0: (1): INFO: Default Net Engine version: 3 (UDP thread per CPU core)
+videochat_coturn  | 0: (1): INFO: Domain name: 
+videochat_coturn  | 0: (1): INFO: Default realm: video.local
+videochat_coturn  | 0: (1): ERROR: CONFIG: Unknown argument: 
+videochat_coturn  | 0: (1): ERROR: CONFIG: Empty cli-password, and so telnet cli interface is disabled! Please set a non empty cli-password!
+videochat_coturn  | 0: (1): WARNING: cannot find certificate file: turn_server_cert.pem (1)
+videochat_coturn  | 0: (1): WARNING: cannot start TLS and DTLS listeners because certificate file is not set properly
+videochat_coturn  | 0: (1): WARNING: cannot find private key file: turn_server_pkey.pem (1)
+videochat_coturn  | 0: (1): WARNING: cannot start TLS and DTLS listeners because private key file is not set properly
+videochat_coturn  | 0: (1): INFO: Certificate file found: //turn_server_cert.pem
+videochat_coturn  | 0: (1): INFO: Private key file found: //turn_server_pkey.pem
+videochat_coturn  | 0: (1): WARNING: NO EXPLICIT LISTENER ADDRESS(ES) ARE CONFIGURED
+videochat_coturn  | 0: (1): INFO: ===========Discovering listener addresses: =========
+videochat_coturn  | 0: (1): INFO: Listener address to use: 127.0.0.1
+videochat_coturn  | 0: (1): INFO: Listener address to use: 172.20.0.4
+videochat_coturn  | 0: (1): INFO: Listener address to use: ::1
+videochat_coturn  | 0: (1): INFO: =====================================================
+videochat_coturn  | 0: (1): INFO: Total: 1 'real' addresses discovered
+videochat_coturn  | 0: (1): INFO: =====================================================
+videochat_coturn  | 0: (1): WARNING: NO EXPLICIT RELAY ADDRESS(ES) ARE CONFIGURED
+videochat_coturn  | 0: (1): INFO: ===========Discovering relay addresses: =============
+videochat_coturn  | 0: (1): INFO: Relay address to use: 172.20.0.4
+videochat_coturn  | 0: (1): INFO: Relay address to use: ::1
+videochat_coturn  | 0: (1): INFO: =====================================================
+videochat_coturn  | 0: (1): INFO: Total: 2 relay addresses discovered
+videochat_coturn  | 0: (1): INFO: =====================================================
+videochat_coturn  | 0: (1): WARNING: Cannot create pid file: /var/run/turnserver.pid
+videochat_coturn  | 0: (1): INFO: pid file created: /var/tmp/turnserver.pid
+videochat_coturn  | 0: (1): INFO: IO method: epoll (with changelist)
+videochat_coturn  | 0: (1): INFO: Wait for relay ports initialization...
+videochat_coturn  | 0: (1): INFO:   relay 172.20.0.4 initialization...
+videochat_coturn  | 0: (1): INFO:   relay 172.20.0.4 initialization done
+videochat_coturn  | 0: (1): INFO:   relay ::1 initialization...
+videochat_coturn  | 0: (1): INFO:   relay ::1 initialization done
+videochat_coturn  | 0: (1): INFO: Relay ports initialization done
+videochat_coturn  | 0: (18): DEBUG: turn server id=0 created
+videochat_coturn  | 0: (19): DEBUG: turn server id=1 created
+videochat_coturn  | 0: (23): DEBUG: turn server id=5 created
+videochat_coturn  | 0: (24): DEBUG: turn server id=6 created
+videochat_coturn  | 0: (20): DEBUG: turn server id=2 created
+videochat_coturn  | 0: (21): DEBUG: turn server id=3 created
+videochat_coturn  | 0: (25): DEBUG: turn server id=7 created
+videochat_coturn  | 0: (1): INFO: Total General servers: 10
+videochat_coturn  | 0: (26): DEBUG: turn server id=8 created
+videochat_coturn  | 0: (27): DEBUG: turn server id=9 created
+videochat_coturn  | 0: (22): DEBUG: turn server id=4 created
+videochat_coturn  | 0: (1): INFO: Total auth threads: 6
+videochat_coturn  | 0: (1): INFO: prometheus collector disabled, not started
+videochat_api     | Obtaining file:///app
+videochat_api     |   Installing build dependencies: started
+videochat_api     |   Installing build dependencies: finished with status 'done'
+videochat_api     |   Checking if build backend supports build_editable: started
+videochat_api     |   Checking if build backend supports build_editable: finished with status 'done'
+videochat_api     |   Getting requirements to build editable: started
+videochat_api     |   Getting requirements to build editable: finished with status 'done'
+videochat_api     |   Preparing editable metadata (pyproject.toml): started
+videochat_api     |   Preparing editable metadata (pyproject.toml): finished with status 'done'
+videochat_api     | Requirement already satisfied: fastapi<0.116.0,>=0.115.0 in /usr/local/lib/python3.11/site-packages (from videochat-api==0.0.1) (0.115.14)
+videochat_api     | Requirement already satisfied: uvicorn<0.31.0,>=0.30.0 in /usr/local/lib/python3.11/site-packages (from uvicorn[standard]<0.31.0,>=0.30.0->videochat-api==0.0.1) (0.30.6)
+videochat_api     | Requirement already satisfied: python-socketio<6.0.0,>=5.11.0 in /usr/local/lib/python3.11/site-packages (from python-socketio[asyncio]<6.0.0,>=5.11.0->videochat-api==0.0.1) (5.14.1)
+videochat_api     | Requirement already satisfied: pydantic<3.0.0,>=2.8.0 in /usr/local/lib/python3.11/site-packages (from videochat-api==0.0.1) (2.11.10)
+videochat_api     | Requirement already satisfied: pydantic-settings<3.0.0,>=2.4.0 in /usr/local/lib/python3.11/site-packages (from videochat-api==0.0.1) (2.11.0)
+videochat_api     | Requirement already satisfied: email-validator<3.0.0,>=2.2.0 in /usr/local/lib/python3.11/site-packages (from videochat-api==0.0.1) (2.3.0)
+videochat_api     | Requirement already satisfied: sqlalchemy<3.0.0,>=2.0.32 in /usr/local/lib/python3.11/site-packages (from videochat-api==0.0.1) (2.0.43)
+videochat_api     | Requirement already satisfied: asyncpg<1.0.0,>=0.29.0 in /usr/local/lib/python3.11/site-packages (from videochat-api==0.0.1) (0.30.0)
+videochat_api     | Requirement already satisfied: redis<6.0.0,>=5.0.8 in /usr/local/lib/python3.11/site-packages (from videochat-api==0.0.1) (5.3.1)
+videochat_api     | Requirement already satisfied: alembic<2.0.0,>=1.13.2 in /usr/local/lib/python3.11/site-packages (from videochat-api==0.0.1) (1.16.5)
+videochat_api     | Requirement already satisfied: passlib<2.0.0,>=1.7.4 in /usr/local/lib/python3.11/site-packages (from passlib[argon2]<2.0.0,>=1.7.4->videochat-api==0.0.1) (1.7.4)
+videochat_api     | Requirement already satisfied: PyJWT<3.0.0,>=2.9.0 in /usr/local/lib/python3.11/site-packages (from videochat-api==0.0.1) (2.10.1)
+videochat_api     | Requirement already satisfied: ruff<0.7.0,>=0.6.8 in /usr/local/lib/python3.11/site-packages (from videochat-api==0.0.1) (0.6.9)
+videochat_api     | Requirement already satisfied: mypy<2.0.0,>=1.11.2 in /usr/local/lib/python3.11/site-packages (from videochat-api==0.0.1) (1.18.2)
+videochat_api     | Requirement already satisfied: pytest<9.0.0,>=8.3.3 in /usr/local/lib/python3.11/site-packages (from videochat-api==0.0.1) (8.4.2)
+videochat_api     | Requirement already satisfied: pytest-asyncio<0.24.0,>=0.23.0 in /usr/local/lib/python3.11/site-packages (from videochat-api==0.0.1) (0.23.8)
+videochat_api     | Requirement already satisfied: httpx<0.28.0,>=0.27.0 in /usr/local/lib/python3.11/site-packages (from videochat-api==0.0.1) (0.27.2)
+videochat_api     | Requirement already satisfied: Mako in /usr/local/lib/python3.11/site-packages (from alembic<2.0.0,>=1.13.2->videochat-api==0.0.1) (1.3.10)
+videochat_api     | Requirement already satisfied: typing-extensions>=4.12 in /usr/local/lib/python3.11/site-packages (from alembic<2.0.0,>=1.13.2->videochat-api==0.0.1) (4.15.0)
+videochat_api     | Requirement already satisfied: dnspython>=2.0.0 in /usr/local/lib/python3.11/site-packages (from email-validator<3.0.0,>=2.2.0->videochat-api==0.0.1) (2.8.0)
+videochat_api     | Requirement already satisfied: idna>=2.0.0 in /usr/local/lib/python3.11/site-packages (from email-validator<3.0.0,>=2.2.0->videochat-api==0.0.1) (3.10)
+videochat_api     | Requirement already satisfied: starlette<0.47.0,>=0.40.0 in /usr/local/lib/python3.11/site-packages (from fastapi<0.116.0,>=0.115.0->videochat-api==0.0.1) (0.46.2)
+videochat_api     | Requirement already satisfied: anyio in /usr/local/lib/python3.11/site-packages (from httpx<0.28.0,>=0.27.0->videochat-api==0.0.1) (4.11.0)
+videochat_api     | Requirement already satisfied: certifi in /usr/local/lib/python3.11/site-packages (from httpx<0.28.0,>=0.27.0->videochat-api==0.0.1) (2025.10.5)
+videochat_api     | Requirement already satisfied: httpcore==1.* in /usr/local/lib/python3.11/site-packages (from httpx<0.28.0,>=0.27.0->videochat-api==0.0.1) (1.0.9)
+videochat_api     | Requirement already satisfied: sniffio in /usr/local/lib/python3.11/site-packages (from httpx<0.28.0,>=0.27.0->videochat-api==0.0.1) (1.3.1)
+videochat_api     | Requirement already satisfied: h11>=0.16 in /usr/local/lib/python3.11/site-packages (from httpcore==1.*->httpx<0.28.0,>=0.27.0->videochat-api==0.0.1) (0.16.0)
+videochat_api     | Requirement already satisfied: mypy_extensions>=1.0.0 in /usr/local/lib/python3.11/site-packages (from mypy<2.0.0,>=1.11.2->videochat-api==0.0.1) (1.1.0)
+videochat_api     | Requirement already satisfied: pathspec>=0.9.0 in /usr/local/lib/python3.11/site-packages (from mypy<2.0.0,>=1.11.2->videochat-api==0.0.1) (0.12.1)
+videochat_api     | Requirement already satisfied: argon2-cffi>=18.2.0 in /usr/local/lib/python3.11/site-packages (from passlib[argon2]<2.0.0,>=1.7.4->videochat-api==0.0.1) (25.1.0)
+videochat_api     | Requirement already satisfied: annotated-types>=0.6.0 in /usr/local/lib/python3.11/site-packages (from pydantic<3.0.0,>=2.8.0->videochat-api==0.0.1) (0.7.0)
+videochat_api     | Requirement already satisfied: pydantic-core==2.33.2 in /usr/local/lib/python3.11/site-packages (from pydantic<3.0.0,>=2.8.0->videochat-api==0.0.1) (2.33.2)
+videochat_api     | Requirement already satisfied: typing-inspection>=0.4.0 in /usr/local/lib/python3.11/site-packages (from pydantic<3.0.0,>=2.8.0->videochat-api==0.0.1) (0.4.2)
+videochat_api     | Requirement already satisfied: python-dotenv>=0.21.0 in /usr/local/lib/python3.11/site-packages (from pydantic-settings<3.0.0,>=2.4.0->videochat-api==0.0.1) (1.1.1)
+videochat_api     | Requirement already satisfied: iniconfig>=1 in /usr/local/lib/python3.11/site-packages (from pytest<9.0.0,>=8.3.3->videochat-api==0.0.1) (2.1.0)
+videochat_api     | Requirement already satisfied: packaging>=20 in /usr/local/lib/python3.11/site-packages (from pytest<9.0.0,>=8.3.3->videochat-api==0.0.1) (25.0)
+videochat_api     | Requirement already satisfied: pluggy<2,>=1.5 in /usr/local/lib/python3.11/site-packages (from pytest<9.0.0,>=8.3.3->videochat-api==0.0.1) (1.6.0)
+videochat_api     | Requirement already satisfied: pygments>=2.7.2 in /usr/local/lib/python3.11/site-packages (from pytest<9.0.0,>=8.3.3->videochat-api==0.0.1) (2.19.2)
+videochat_api     | Requirement already satisfied: bidict>=0.21.0 in /usr/local/lib/python3.11/site-packages (from python-socketio<6.0.0,>=5.11.0->python-socketio[asyncio]<6.0.0,>=5.11.0->videochat-api==0.0.1) (0.23.1)
+videochat_api     | Requirement already satisfied: python-engineio>=4.11.0 in /usr/local/lib/python3.11/site-packages (from python-socketio<6.0.0,>=5.11.0->python-socketio[asyncio]<6.0.0,>=5.11.0->videochat-api==0.0.1) (4.12.3)
+videochat_api     | WARNING: python-socketio 5.14.1 does not provide the extra 'asyncio'
+videochat_api     | Requirement already satisfied: greenlet>=1 in /usr/local/lib/python3.11/site-packages (from sqlalchemy<3.0.0,>=2.0.32->videochat-api==0.0.1) (3.2.4)
+videochat_api     | Requirement already satisfied: click>=7.0 in /usr/local/lib/python3.11/site-packages (from uvicorn<0.31.0,>=0.30.0->uvicorn[standard]<0.31.0,>=0.30.0->videochat-api==0.0.1) (8.3.0)
+videochat_api     | Requirement already satisfied: httptools>=0.5.0 in /usr/local/lib/python3.11/site-packages (from uvicorn[standard]<0.31.0,>=0.30.0->videochat-api==0.0.1) (0.6.4)
+videochat_api     | Requirement already satisfied: pyyaml>=5.1 in /usr/local/lib/python3.11/site-packages (from uvicorn[standard]<0.31.0,>=0.30.0->videochat-api==0.0.1) (6.0.3)
+videochat_api     | Requirement already satisfied: uvloop!=0.15.0,!=0.15.1,>=0.14.0 in /usr/local/lib/python3.11/site-packages (from uvicorn[standard]<0.31.0,>=0.30.0->videochat-api==0.0.1) (0.21.0)
+videochat_api     | Requirement already satisfied: watchfiles>=0.13 in /usr/local/lib/python3.11/site-packages (from uvicorn[standard]<0.31.0,>=0.30.0->videochat-api==0.0.1) (1.1.0)
+videochat_api     | Requirement already satisfied: websockets>=10.4 in /usr/local/lib/python3.11/site-packages (from uvicorn[standard]<0.31.0,>=0.30.0->videochat-api==0.0.1) (15.0.1)
+videochat_api     | Requirement already satisfied: argon2-cffi-bindings in /usr/local/lib/python3.11/site-packages (from argon2-cffi>=18.2.0->passlib[argon2]<2.0.0,>=1.7.4->videochat-api==0.0.1) (25.1.0)
+videochat_api     | Requirement already satisfied: simple-websocket>=0.10.0 in /usr/local/lib/python3.11/site-packages (from python-engineio>=4.11.0->python-socketio<6.0.0,>=5.11.0->python-socketio[asyncio]<6.0.0,>=5.11.0->videochat-api==0.0.1) (1.1.0)
+videochat_api     | Requirement already satisfied: MarkupSafe>=0.9.2 in /usr/local/lib/python3.11/site-packages (from Mako->alembic<2.0.0,>=1.13.2->videochat-api==0.0.1) (3.0.3)
+videochat_api     | Requirement already satisfied: wsproto in /usr/local/lib/python3.11/site-packages (from simple-websocket>=0.10.0->python-engineio>=4.11.0->python-socketio<6.0.0,>=5.11.0->python-socketio[asyncio]<6.0.0,>=5.11.0->videochat-api==0.0.1) (1.2.0)
+videochat_api     | Requirement already satisfied: cffi>=1.0.1 in /usr/local/lib/python3.11/site-packages (from argon2-cffi-bindings->argon2-cffi>=18.2.0->passlib[argon2]<2.0.0,>=1.7.4->videochat-api==0.0.1) (2.0.0)
+videochat_api     | Requirement already satisfied: pycparser in /usr/local/lib/python3.11/site-packages (from cffi>=1.0.1->argon2-cffi-bindings->argon2-cffi>=18.2.0->passlib[argon2]<2.0.0,>=1.7.4->videochat-api==0.0.1) (2.23)
+videochat_api     | Checking if build backend supports build_editable: started
+videochat_api     | Checking if build backend supports build_editable: finished with status 'done'
+videochat_api     | Building wheels for collected packages: videochat-api
+videochat_api     |   Building editable for videochat-api (pyproject.toml): started
+videochat_api     |   Building editable for videochat-api (pyproject.toml): finished with status 'done'
+videochat_api     |   Created wheel for videochat-api: filename=videochat_api-0.0.1-0.editable-py3-none-any.whl size=3171 sha256=82fb596bccb9f74bd60a34f0ba154d215d01747a3d3744c1894b37bb4ae5bc02
+videochat_api     |   Stored in directory: /tmp/pip-ephem-wheel-cache-q0h54f21/wheels/57/0f/98/bb57b2b57b95807699b822a35c022f139d38a02c27922f27ce
+videochat_api     | Successfully built videochat-api
+videochat_api     | Installing collected packages: videochat-api
+videochat_api     |   Attempting uninstall: videochat-api
+videochat_api     |     Found existing installation: videochat-api 0.0.1
+videochat_api     |     Uninstalling videochat-api-0.0.1:
+videochat_api     |       Successfully uninstalled videochat-api-0.0.1
+videochat_api     | Successfully installed videochat-api-0.0.1
+videochat_api     | WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv
+videochat_api     | 
+videochat_api     | [notice] A new release of pip is available: 24.0 -> 25.2
+videochat_api     | [notice] To update, run: pip install --upgrade pip
+videochat_api     | INFO [alembic.runtime.migration] Context impl PostgresqlImpl.
+videochat_api     | INFO [alembic.runtime.migration] Will assume transactional DDL.
+videochat_api     | INFO:     Will watch for changes in these directories: ['/app']
+videochat_api     | INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+videochat_api     | INFO:     Started reloader process [21] using WatchFiles
+videochat_api     | INFO:     Started server process [23]
+videochat_api     | INFO:     Waiting for application startup.
+videochat_api     | INFO:     Application startup complete.
+videochat_api     | INFO:     192.168.65.1:38145 - "GET /auth/me HTTP/1.1" 401 Unauthorized
+videochat_api     | INFO:     192.168.65.1:38145 - "GET /auth/me HTTP/1.1" 401 Unauthorized
+videochat_api     | INFO:     192.168.65.1:38145 - "GET /auth/me HTTP/1.1" 401 Unauthorized
+videochat_db      | 2025-10-08 21:51:14.748 UTC [73] ERROR:  invalid input value for enum session_kind: "WEB"
+videochat_db      | 2025-10-08 21:51:14.748 UTC [73] CONTEXT:  unnamed portal parameter $4
+videochat_db      | 2025-10-08 21:51:14.748 UTC [73] STATEMENT:  INSERT INTO auth_sessions (id, user_id, device_id, kind, session_token_hash, csrf_token, refresh_token_hash, refresh_token_expires_at, expires_at, ip_address, user_agent, last_seen_at, revoked_at) VALUES ($1::VARCHAR, $2::INTEGER, $3::INTEGER, $4::session_kind, $5::VARCHAR, $6::VARCHAR, $7::VARCHAR, $8::TIMESTAMP WITH TIME ZONE, $9::TIMESTAMP WITH TIME ZONE, $10::VARCHAR, $11::VARCHAR, $12::TIMESTAMP WITH TIME ZONE, $13::TIMESTAMP WITH TIME ZONE) RETURNING auth_sessions.created_at
+videochat_api     | INFO:     192.168.65.1:23859 - "POST /auth/login HTTP/1.1" 500 Internal Server Error
+videochat_api     | ERROR:    Exception in ASGI application
+videochat_api     | Traceback (most recent call last):
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 545, in _prepare_and_execute
+videochat_api     |     self._rows = deque(await prepared_stmt.fetch(*parameters))
+videochat_api     |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/asyncpg/prepared_stmt.py", line 176, in fetch
+videochat_api     |     data = await self.__bind_execute(args, 0, timeout)
+videochat_api     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/asyncpg/prepared_stmt.py", line 267, in __bind_execute
+videochat_api     |     data, status, _ = await self.__do_execute(
+videochat_api     |                       ^^^^^^^^^^^^^^^^^^^^^^^^
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/asyncpg/prepared_stmt.py", line 256, in __do_execute
+videochat_api     |     return await executor(protocol)
+videochat_api     |            ^^^^^^^^^^^^^^^^^^^^^^^^
+videochat_api     |   File "asyncpg/protocol/protocol.pyx", line 206, in bind_execute
+videochat_api     | asyncpg.exceptions.InvalidTextRepresentationError: invalid input value for enum session_kind: "WEB"
+videochat_api     | 
+videochat_api     | The above exception was the direct cause of the following exception:
+videochat_api     | 
+videochat_api     | Traceback (most recent call last):
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+videochat_api     |     self.dialect.do_execute(
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 951, in do_execute
+videochat_api     |     cursor.execute(statement, parameters)
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 580, in execute
+videochat_api     |     self._adapt_connection.await_(
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 132, in await_only
+videochat_api     |     return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+videochat_api     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 196, in greenlet_spawn
+videochat_api     |     value = await result
+videochat_api     |             ^^^^^^^^^^^^
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 558, in _prepare_and_execute
+videochat_api     |     self._handle_exception(error)
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 508, in _handle_exception
+videochat_api     |     self._adapt_connection._handle_exception(error)
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 792, in _handle_exception
+videochat_api     |     raise translated_error from error
+videochat_api     | sqlalchemy.dialects.postgresql.asyncpg.AsyncAdapt_asyncpg_dbapi.Error: <class 'asyncpg.exceptions.InvalidTextRepresentationError'>: invalid input value for enum session_kind: "WEB"
+videochat_api     | 
+videochat_api     | The above exception was the direct cause of the following exception:
+videochat_api     | 
+videochat_api     | Traceback (most recent call last):
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/uvicorn/protocols/http/httptools_impl.py", line 401, in run_asgi
+videochat_api     |     result = await app(  # type: ignore[func-returns-value]
+videochat_api     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/uvicorn/middleware/proxy_headers.py", line 70, in __call__
+videochat_api     |     return await self.app(scope, receive, send)
+videochat_api     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/engineio/async_drivers/asgi.py", line 75, in __call__
+videochat_api     |     await self.other_asgi_app(scope, receive, send)
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/fastapi/applications.py", line 1054, in __call__
+videochat_api     |     await super().__call__(scope, receive, send)
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/starlette/applications.py", line 112, in __call__
+videochat_api     |     await self.middleware_stack(scope, receive, send)
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 187, in __call__
+videochat_api     |     raise exc
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 165, in __call__
+videochat_api     |     await self.app(scope, receive, _send)
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 85, in __call__
+videochat_api     |     await self.app(scope, receive, send)
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+videochat_api     |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+videochat_api     |     raise exc
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+videochat_api     |     await app(scope, receive, sender)
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 714, in __call__
+videochat_api     |     await self.middleware_stack(scope, receive, send)
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 734, in app
+videochat_api     |     await route.handle(scope, receive, send)
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 288, in handle
+videochat_api     |     await self.app(scope, receive, send)
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 76, in app
+videochat_api     |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+videochat_api     |     raise exc
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+videochat_api     |     await app(scope, receive, sender)
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 73, in app
+videochat_api     |     response = await f(request)
+videochat_api     |                ^^^^^^^^^^^^^^^^
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 301, in app
+videochat_api     |     raw_response = await run_endpoint_function(
+videochat_api     |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 212, in run_endpoint_function
+videochat_api     |     return await dependant.call(**values)
+videochat_api     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+videochat_api     |   File "/app/videochat_api/api/endpoints/auth.py", line 128, in login_user
+videochat_api     |     tokens = await session_manager.create_web_session(db, user, ip_address, user_agent)
+videochat_api     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+videochat_api     |   File "/app/videochat_api/auth/session.py", line 107, in create_web_session
+videochat_api     |     await db.flush()
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/ext/asyncio/session.py", line 801, in flush
+videochat_api     |     await greenlet_spawn(self.sync_session.flush, objects=objects)
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 203, in greenlet_spawn
+videochat_api     |     result = context.switch(value)
+videochat_api     |              ^^^^^^^^^^^^^^^^^^^^^
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 4345, in flush
+videochat_api     |     self._flush(objects)
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 4480, in _flush
+videochat_api     |     with util.safe_reraise():
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py", line 224, in __exit__
+videochat_api     |     raise exc_value.with_traceback(exc_tb)
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 4441, in _flush
+videochat_api     |     flush_context.execute()
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/unitofwork.py", line 466, in execute
+videochat_api     |     rec.execute(self)
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/unitofwork.py", line 642, in execute
+videochat_api     |     util.preloaded.orm_persistence.save_obj(
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/persistence.py", line 93, in save_obj
+videochat_api     |     _emit_insert_statements(
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/persistence.py", line 1233, in _emit_insert_statements
+videochat_api     |     result = connection.execute(
+videochat_api     |              ^^^^^^^^^^^^^^^^^^^
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1419, in execute
+videochat_api     |     return meth(
+videochat_api     |            ^^^^^
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/sql/elements.py", line 526, in _execute_on_connection
+videochat_api     |     return connection._execute_clauseelement(
+videochat_api     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1641, in _execute_clauseelement
+videochat_api     |     ret = self._execute_context(
+videochat_api     |           ^^^^^^^^^^^^^^^^^^^^^^
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+videochat_api     |     return self._exec_single_context(
+videochat_api     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+videochat_api     |     self._handle_dbapi_exception(
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+videochat_api     |     raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+videochat_api     |     self.dialect.do_execute(
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 951, in do_execute
+videochat_api     |     cursor.execute(statement, parameters)
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 580, in execute
+videochat_api     |     self._adapt_connection.await_(
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 132, in await_only
+videochat_api     |     return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+videochat_api     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 196, in greenlet_spawn
+videochat_api     |     value = await result
+videochat_api     |             ^^^^^^^^^^^^
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 558, in _prepare_and_execute
+videochat_api     |     self._handle_exception(error)
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 508, in _handle_exception
+videochat_api     |     self._adapt_connection._handle_exception(error)
+videochat_api     |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 792, in _handle_exception
+videochat_api     |     raise translated_error from error
+videochat_api     | sqlalchemy.exc.DBAPIError: (sqlalchemy.dialects.postgresql.asyncpg.Error) <class 'asyncpg.exceptions.InvalidTextRepresentationError'>: invalid input value for enum session_kind: "WEB"
+videochat_api     | [SQL: INSERT INTO auth_sessions (id, user_id, device_id, kind, session_token_hash, csrf_token, refresh_token_hash, refresh_token_expires_at, expires_at, ip_address, user_agent, last_seen_at, revoked_at) VALUES ($1::VARCHAR, $2::INTEGER, $3::INTEGER, $4::session_kind, $5::VARCHAR, $6::VARCHAR, $7::VARCHAR, $8::TIMESTAMP WITH TIME ZONE, $9::TIMESTAMP WITH TIME ZONE, $10::VARCHAR, $11::VARCHAR, $12::TIMESTAMP WITH TIME ZONE, $13::TIMESTAMP WITH TIME ZONE) RETURNING auth_sessions.created_at]
+videochat_api     | [parameters: ('fc27bf5f-3281-4451-a5b3-a06b1081da8c', 5, None, 'WEB', '9dd350fe218ce5d805bd0ec11c5af31ba1c9ae1aaf2ce99ef17c40864207b11b', 'IcZXo7dcAWHLx0-V95NYdOx9y_g_fl_-abVKSCZw9FI', None, None, datetime.datetime(2025, 10, 15, 21, 51, 14, 742359, tzinfo=datetime.timezone.utc), '192.168.65.1', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36', None, None)]
+videochat_api     | (Background on this error at: https://sqlalche.me/e/20/dbapi)

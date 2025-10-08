@@ -1,0 +1,56 @@
+maximrunkov@Mac-mini-Maxim video-chat % pnpm dev
+
+> self-hosted-videochat@ dev /Users/maximrunkov/Desktop/projects/video-chat
+> turbo run dev --parallel
+
+turbo 2.5.8
+
+• Packages in scope: @video-chat/admin, @video-chat/contracts, @video-chat/ui, @video-chat/web
+• Running dev in 4 packages
+• Remote caching disabled
+@video-chat/web:dev: cache bypass, force executing cd0bd23ac653db09
+@video-chat/admin:dev: cache bypass, force executing 34f4ddebe9248ab1
+@video-chat/admin:dev: 
+@video-chat/admin:dev: > @video-chat/admin@0.0.0 dev /Users/maximrunkov/Desktop/projects/video-chat/apps/admin
+@video-chat/admin:dev: > next dev --port 3100
+@video-chat/admin:dev: 
+@video-chat/web:dev: 
+@video-chat/web:dev: > @video-chat/web@0.0.0 dev /Users/maximrunkov/Desktop/projects/video-chat/apps/web
+@video-chat/web:dev: > next dev --port 3000
+@video-chat/web:dev: 
+@video-chat/web:dev:  ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+@video-chat/web:dev:  We detected multiple lockfiles and selected the directory of /Users/maximrunkov/Desktop/projects/video-chat/pnpm-lock.yaml as the root directory.
+@video-chat/web:dev:  To silence this warning, set `outputFileTracingRoot` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+@video-chat/web:dev:    See https://nextjs.org/docs/app/api-reference/config/next-config-js/output#caveats for more information.
+@video-chat/web:dev:  Detected additional lockfiles: 
+@video-chat/web:dev:    * /Users/maximrunkov/Desktop/projects/video-chat/apps/web/package-lock.json
+@video-chat/web:dev: 
+@video-chat/admin:dev:  ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+@video-chat/admin:dev:  We detected multiple lockfiles and selected the directory of /Users/maximrunkov/Desktop/projects/video-chat/pnpm-lock.yaml as the root directory.
+@video-chat/admin:dev:  To silence this warning, set `outputFileTracingRoot` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+@video-chat/admin:dev:    See https://nextjs.org/docs/app/api-reference/config/next-config-js/output#caveats for more information.
+@video-chat/admin:dev:  Detected additional lockfiles: 
+@video-chat/admin:dev:    * /Users/maximrunkov/Desktop/projects/video-chat/apps/admin/package-lock.json
+@video-chat/admin:dev: 
+@video-chat/admin:dev:    ▲ Next.js 15.5.4
+@video-chat/admin:dev:    - Local:        http://localhost:3100
+@video-chat/admin:dev:    - Network:      http://192.168.0.36:3100
+@video-chat/admin:dev: 
+@video-chat/admin:dev:  ✓ Starting...
+@video-chat/web:dev:    ▲ Next.js 15.5.4
+@video-chat/web:dev:    - Local:        http://localhost:3000
+@video-chat/web:dev:    - Network:      http://192.168.0.36:3000
+@video-chat/web:dev: 
+@video-chat/web:dev:  ✓ Starting...
+@video-chat/admin:dev:  ✓ Ready in 1316ms
+@video-chat/web:dev:  ✓ Ready in 1333ms
+@video-chat/web:dev:  ○ Compiling / ...
+@video-chat/web:dev:  ✓ Compiled / in 4.7s (566 modules)
+@video-chat/web:dev:  GET / 307 in 10972ms
+@video-chat/web:dev:  ○ Compiling /app ...
+@video-chat/web:dev:  ✓ Compiled /app in 1204ms (1747 modules)
+@video-chat/web:dev:  GET /app 307 in 1367ms
+@video-chat/web:dev:  ○ Compiling /auth/login ...
+@video-chat/web:dev:  ✓ Compiled /auth/login in 543ms (1891 modules)
+@video-chat/web:dev:  GET /auth/login 200 in 812ms
+@video-chat/web:dev:  POST /auth/login 200 in 214ms
