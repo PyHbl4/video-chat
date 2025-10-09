@@ -1,7 +1,7 @@
 "use client"
 
-import { useSessionContext } from "@/components/session/session-provider"
-import type { SessionSnapshot } from "@/lib/session/types"
+import { useSessionContext } from "../components/session-provider"
+import type { SessionSnapshot } from "../session/types"
 
 export function useSession(): {
   session: SessionSnapshot

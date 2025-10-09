@@ -1,11 +1,15 @@
 import assert from "node:assert/strict"
 
-import { loginActionWithDependencies, type LoginFields } from "@/lib/auth/actions"
-import { createInitialFormState } from "@/lib/auth/types"
-import { CSRF_COOKIE_NAME, SESSION_COOKIE_NAME } from "@/lib/env"
-import { applyResponseCookies } from "@/lib/server/set-cookie"
-import type { SessionSnapshot } from "@/lib/session/types"
-import type { createServerAuthApi } from "@/lib/api/server"
+import {
+  loginActionWithDependencies,
+  type LoginFields,
+  createInitialFormState,
+  CSRF_COOKIE_NAME,
+  SESSION_COOKIE_NAME,
+  applyResponseCookies
+} from "@video-chat/web-auth"
+import type { SessionSnapshot } from "@video-chat/web-auth"
+import type { createServerAuthApi } from "@video-chat/web-auth"
 
 type CookieInput = {
   name: string

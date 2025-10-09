@@ -1,15 +1,5 @@
-:root {
-  color-scheme: light dark;
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-}
+@import "../globals.css";
 
-body {
-  margin: 0;
-  background: #0f172a;
-  color: #f8fafc;
-}
-
-main h1 {
-  font-size: clamp(2rem, 5vw, 3rem);
-  text-align: center;
-}
+@source "./**/*.{ts,tsx}";
+@source "../../packages/ui/src/**/*.{ts,tsx}";
+@source "../../packages/web-auth/src/**/*.{ts,tsx}";

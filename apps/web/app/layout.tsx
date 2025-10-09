@@ -2,8 +2,7 @@ import type { Metadata } from "next"
 
 import "./globals.css"
 
-import { SessionProvider } from "@/components/session/session-provider"
-import { getInitialSession } from "@/lib/session/server"
+import { SessionProvider, getInitialSession } from "@video-chat/web-auth"
 
 export const metadata: Metadata = {
   title: "Self-Hosted Video Chat",

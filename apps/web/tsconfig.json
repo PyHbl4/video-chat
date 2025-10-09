@@ -17,10 +17,18 @@
       ],
       "@video-chat/contracts/*": [
         "../../packages/contracts/src/*"
+      ],
+      "@video-chat/web-auth": [
+        "../../packages/web-auth/src/index.ts"
+      ],
+      "@video-chat/web-auth/*": [
+        "../../packages/web-auth/src/*"
       ]
     },
     "types": [
-      "node"
+      "node",
+      "react",
+      "react-dom"
     ],
     "lib": [
       "dom",

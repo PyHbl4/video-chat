@@ -1,4 +1,4 @@
-import type { SessionSnapshot } from "@/lib/session/types"
+import type { SessionSnapshot } from "../session/types"
 
 export type AuthFormStatus = "idle" | "validation" | "error" | "success"
 

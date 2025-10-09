@@ -24,15 +24,14 @@ import {
   Input,
   Spinner
 } from "@video-chat/ui"
-
-import { useSession, loginAction, initialLoginState } from "@video-chat/web-auth"
+import { loginAction, initialLoginState, useSession } from "@video-chat/web-auth"
 import type { LoginFields } from "@video-chat/web-auth"
 
 function SubmitButton({ children }: { children: React.ReactNode }) {
   const { pending } = useFormStatus()
 
   return (
-    <Button type="submit" className="w-full" disabled={pending} aria-disabled={pending}>
+    <Button type="submit" className="w-full" disabled={pending} aria-disabled={pending} variant="default">
       {pending && <Spinner className="mr-2" />} {pending ? "Входим..." : children}
     </Button>
   )
@@ -46,7 +45,7 @@ export function LoginForm() {
   useEffect(() => {
     if (state.status === "success" && state.session) {
       setSession(state.session)
-      router.replace("/app")
+      router.replace("/")
     }
   }, [router, setSession, state])
 
@@ -55,8 +54,8 @@ export function LoginForm() {
   return (
     <Card className="mx-auto w-full max-w-md">
       <CardHeader>
-        <CardTitle>Вход</CardTitle>
-        <CardDescription>Введите логин или email и пароль, чтобы продолжить.</CardDescription>
+        <CardTitle>Вход в панель администратора</CardTitle>
+        <CardDescription>Используйте учётную запись платформы, чтобы продолжить.</CardDescription>
       </CardHeader>
       <CardContent>
         {state.status === "error" && state.message && (
@@ -77,7 +76,7 @@ export function LoginForm() {
                   autoComplete="username"
                   required
                   minLength={3}
-                  placeholder="maxim или maxim@example.com"
+                  placeholder="admin или admin@example.com"
                   aria-invalid={Boolean(fieldErrors.identifier)}
                 />
                 <FieldError>{fieldErrors.identifier}</FieldError>
@@ -104,7 +103,7 @@ export function LoginForm() {
       </CardContent>
       <CardFooter className="justify-center text-sm text-muted-foreground">
         <span>
-          Нет аккаунта? <Link href="/auth/register" className="text-primary hover:underline">Зарегистрироваться</Link>
+          Нет доступа? <Link href="/auth/register" className="text-primary hover:underline">Запросить учётную запись</Link>
         </span>
       </CardFooter>
     </Card>

@@ -1,4 +1,5 @@
-const AUTH_DEBUG_FLAG = process.env.WEB_AUTH_DEBUG === "1" ||
+const AUTH_DEBUG_FLAG =
+  process.env.WEB_AUTH_DEBUG === "1" ||
   process.env.WEB_AUTH_DEBUG === "true" ||
   process.env.WEB_AUTH_DEBUG === "on"
 

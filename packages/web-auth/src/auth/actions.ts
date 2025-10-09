@@ -1,13 +1,13 @@
 "use server"
 
 import { ApiError } from "@video-chat/contracts"
-import { CSRF_COOKIE_NAME, isProduction } from "@/lib/env"
-import { applyResponseCookies, deleteCookies } from "@/lib/server/set-cookie"
-import { createServerAuthApi } from "@/lib/api/server"
-import { getInitialSession } from "@/lib/session/server"
-import { createEmptySession, deriveTokensFromLogin, type SessionSnapshot } from "@/lib/session/types"
-import { authDebug, isAuthDebugEnabled } from "@/lib/server/debug-logger"
 
+import { createServerAuthApi } from "../api/server"
+import { CSRF_COOKIE_NAME, isProduction } from "../env"
+import { authDebug, isAuthDebugEnabled } from "../server/debug-logger"
+import { applyResponseCookies, deleteCookies } from "../server/set-cookie"
+import { getInitialSession } from "../session/server"
+import { createEmptySession, deriveTokensFromLogin, type SessionSnapshot } from "../session/types"
 import type { FieldErrors, FormState } from "./types"
 
 type CookieStore = Awaited<ReturnType<typeof import("next/headers").cookies>>
@@ -73,7 +73,6 @@ export async function loginActionWithDependencies(
   _prevState: FormState<LoginFields>,
   formData: FormData
 ): Promise<FormState<LoginFields>> {
-
   const identifier = normalizeString(formData.get("identifier"))
   const password = normalizeString(formData.get("password"))
 
@@ -206,7 +205,6 @@ export async function registerAction(
   _prevState: FormState<RegisterFields>,
   formData: FormData
 ): Promise<FormState<RegisterFields>> {
-
   const email = normalizeString(formData.get("email"))
   const username = normalizeString(formData.get("username"))
   const password = normalizeString(formData.get("password"))
@@ -269,7 +267,6 @@ export async function registerAction(
 }
 
 export async function logoutAction(): Promise<SessionSnapshot> {
-
   try {
     const auth = createServerAuthApi()
     const result = await auth.logout()

@@ -24,8 +24,7 @@ import {
   Input,
   Spinner
 } from "@video-chat/ui"
-
-import { registerAction, initialRegisterState } from "@video-chat/web-auth"
+import { initialRegisterState, registerAction } from "@video-chat/web-auth"
 import type { RegisterFields } from "@video-chat/web-auth"
 
 function SubmitButton({ children }: { children: React.ReactNode }) {
@@ -33,7 +32,7 @@ function SubmitButton({ children }: { children: React.ReactNode }) {
 
   return (
     <Button type="submit" className="w-full" disabled={pending} aria-disabled={pending}>
-      {pending && <Spinner className="mr-2" />} {pending ? "Создаём..." : children}
+      {pending && <Spinner className="mr-2" />} {pending ? "Отправляем..." : children}
     </Button>
   )
 }
@@ -45,26 +44,26 @@ export function RegisterForm() {
   return (
     <Card className="mx-auto w-full max-w-md">
       <CardHeader>
-        <CardTitle>Регистрация</CardTitle>
-        <CardDescription>Создайте аккаунт, чтобы приглашать друзей и проводить звонки.</CardDescription>
+        <CardTitle>Запросить доступ</CardTitle>
+        <CardDescription>Укажите данные учётной записи, и мы создадим доступ для панели администратора.</CardDescription>
       </CardHeader>
       <CardContent>
         {state.status === "error" && state.message && (
           <Alert variant="destructive" className="mb-4">
-            <AlertTitle>Не удалось зарегистрироваться</AlertTitle>
+            <AlertTitle>Не удалось отправить заявку</AlertTitle>
             <AlertDescription>{state.message}</AlertDescription>
           </Alert>
         )}
         {state.status === "success" && state.message && (
           <Alert className="mb-4">
-            <AlertTitle>Готово</AlertTitle>
+            <AlertTitle>Заявка отправлена</AlertTitle>
             <AlertDescription>{state.message}</AlertDescription>
           </Alert>
         )}
         <form action={formAction} className="space-y-6" noValidate>
           <FieldSet className="gap-6">
             <Field data-invalid={Boolean(fieldErrors.email)}>
-              <FieldLabel htmlFor="email">Email</FieldLabel>
+              <FieldLabel htmlFor="email">Рабочий email</FieldLabel>
               <FieldContent>
                 <Input
                   id="email"
@@ -73,13 +72,13 @@ export function RegisterForm() {
                   autoComplete="email"
                   required
                   aria-invalid={Boolean(fieldErrors.email)}
-                  placeholder="you@example.com"
+                  placeholder="admin@example.com"
                 />
                 <FieldError>{fieldErrors.email}</FieldError>
               </FieldContent>
             </Field>
             <Field data-invalid={Boolean(fieldErrors.username)}>
-              <FieldLabel htmlFor="username">Имя пользователя</FieldLabel>
+              <FieldLabel htmlFor="username">Имя администратора</FieldLabel>
               <FieldContent>
                 <Input
                   id="username"
@@ -90,9 +89,9 @@ export function RegisterForm() {
                   minLength={3}
                   maxLength={32}
                   aria-invalid={Boolean(fieldErrors.username)}
-                  placeholder="maxim"
+                  placeholder="admin_user"
                 />
-                <FieldDescription>От 3 до 32 символов. Латиница, цифры и подчёркивания.</FieldDescription>
+                <FieldDescription>От 3 до 32 символов. Допустимы латиница, цифры и подчёркивания.</FieldDescription>
                 <FieldError>{fieldErrors.username}</FieldError>
               </FieldContent>
             </Field>
@@ -108,16 +107,16 @@ export function RegisterForm() {
                   minLength={8}
                   aria-invalid={Boolean(fieldErrors.password)}
                 />
-                <FieldDescription>Минимум 8 символов. Используйте буквы, цифры и спецсимволы.</FieldDescription>
+                <FieldDescription>Минимум 8 символов. Используйте сложный пароль.</FieldDescription>
                 <FieldError>{fieldErrors.password}</FieldError>
               </FieldContent>
             </Field>
           </FieldSet>
-          <SubmitButton>Создать аккаунт</SubmitButton>
+          <SubmitButton>Отправить заявку</SubmitButton>
         </form>
       </CardContent>
       <CardFooter className="justify-center text-sm text-muted-foreground">
-        Уже есть аккаунт? <Link href="/auth/login" className="text-primary hover:underline">Войти</Link>
+        Уже есть доступ? <Link href="/auth/login" className="text-primary hover:underline">Войти</Link>
       </CardFooter>
     </Card>
   )

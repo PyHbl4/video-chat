@@ -1,8 +1,8 @@
 import { ApiError } from "@video-chat/contracts"
 import { cookies } from "next/headers"
 
-import { CSRF_COOKIE_NAME } from "../env"
 import { createServerAuthApi } from "../api/server"
+import { CSRF_COOKIE_NAME } from "../env"
 import { createEmptySession, type SessionSnapshot } from "./types"
 
 export async function getInitialSession(): Promise<SessionSnapshot> {

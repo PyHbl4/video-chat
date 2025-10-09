@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
 
-import type { SessionContextValue, SessionSnapshot } from "@/lib/session/types"
+import type { SessionContextValue, SessionSnapshot } from "../session/types"
 
 const SessionContext = createContext<SessionContextValue | undefined>(undefined)
 
