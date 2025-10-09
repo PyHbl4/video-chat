@@ -26,6 +26,7 @@ from videochat_api.schemas import (
     UserResponse,
 )
 from videochat_api.services.rate_limiter import RedisRateLimiter
+from videochat_api.services.rbac import RoleName, role_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -55,6 +56,8 @@ async def register_user(
     )
     db.add(user)
     try:
+        await db.flush()
+        await role_service.ensure_role(db, user.id, RoleName.USER)
         await db.commit()
     except IntegrityError:
         await db.rollback()
@@ -102,11 +105,11 @@ async def login_user(
 
     try:
         if device_kind == DeviceKind.WEB:
-            tokens = await session_manager.create_web_session(db, user, ip_address, user_agent)
+            web_tokens = await session_manager.create_web_session(db, user, ip_address, user_agent)
             await db.commit()
             response.set_cookie(
                 key=settings.session_cookie_name,
-                value=tokens.session_cookie,
+                value=web_tokens.session_cookie,
                 max_age=settings.session_max_age_seconds,
                 httponly=True,
                 secure=settings.session_cookie_secure,
@@ -114,7 +117,7 @@ async def login_user(
                 path="/",
             )
             return LoginResponse(
-                csrf_token=tokens.csrf_token,
+                csrf_token=web_tokens.csrf_token,
                 session_expires_in=settings.session_max_age_seconds,
             )
 
@@ -123,14 +126,20 @@ async def login_user(
             identifier=device_payload.identifier if device_payload else None,
             display_name=device_payload.display_name if device_payload else None,
         )
-        tokens = await session_manager.create_device_session(db, user, device_info, ip_address, user_agent)
+        device_tokens = await session_manager.create_device_session(
+            db,
+            user,
+            device_info,
+            ip_address,
+            user_agent,
+        )
         await db.commit()
         return LoginResponse(
-            access_token=tokens.access_token,
-            refresh_token=tokens.refresh_token,
+            access_token=device_tokens.access_token,
+            refresh_token=device_tokens.refresh_token,
             expires_in=settings.access_token_ttl_seconds,
             refresh_expires_in=settings.refresh_token_ttl_seconds,
-            device_id=tokens.device_identifier,
+            device_id=device_tokens.device_identifier,
             token_type="bearer",
         )
     except Exception:

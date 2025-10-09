@@ -1,5 +1,8 @@
 from functools import lru_cache
 
+from typing import Literal, cast
+
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -28,6 +31,10 @@ class Settings(BaseSettings):
     access_token_ttl_seconds: int = 60 * 15
     refresh_token_ttl_seconds: int = 60 * 60 * 24 * 30
 
+    admin_superusers: list[str] = Field(default_factory=list)
+    admin_page_size_default: int = 25
+    admin_page_size_max: int = 100
+
     @property
     def database_url_async(self) -> str:
         url = self.database_url
@@ -42,11 +49,11 @@ class Settings(BaseSettings):
         return self.csrf_header_name.lower()
 
     @property
-    def session_samesite(self) -> str:
+    def session_samesite(self) -> Literal["lax", "strict", "none"]:
         value = self.session_cookie_samesite.lower()
         if value not in {"lax", "strict", "none"}:
-            return "lax"
-        return value
+            return cast(Literal["lax", "strict", "none"], "lax")
+        return cast(Literal["lax", "strict", "none"], value)
 
 
 @lru_cache

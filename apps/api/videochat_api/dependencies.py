@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
+from dataclasses import dataclass
+from typing import Awaitable, Callable
 from datetime import datetime, timezone
 
 from fastapi import Depends, HTTPException, Request, status
@@ -10,7 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from videochat_api.auth.session import session_manager
 from videochat_api.config import settings
 from videochat_api.db.session import get_db_session
-from videochat_api.models import AuthSession, User
+from videochat_api.models import AuthSession, RoleName, User
+from videochat_api.services.rbac import role_service
 from videochat_api.services.rate_limiter import RedisRateLimiter
 
 
@@ -99,3 +102,41 @@ async def get_current_user(
     request.state.db_session = db
 
     return user
+
+
+@dataclass(slots=True)
+class CurrentUserWithRoles:
+    user: User
+    roles: set[RoleName]
+    is_superuser: bool
+
+
+async def get_current_user_with_roles(request: Request, user: User = Depends(get_current_user)) -> CurrentUserWithRoles:
+    cached: CurrentUserWithRoles | None = getattr(request.state, "user_roles", None)
+    if cached is not None:
+        return cached
+
+    db: AsyncSession | None = getattr(request.state, "db_session", None)
+    if db is None:
+        raise RuntimeError("Database session is not available in request state")
+
+    roles = await role_service.list_roles(db, user.id)
+    current = CurrentUserWithRoles(user=user, roles=roles, is_superuser=role_service.is_superuser(user))
+    request.state.user_roles = current
+    return current
+
+
+def require_roles(*required_roles: RoleName, allow_super: bool = True) -> Callable[..., Awaitable[User]]:
+    flattened = list(required_roles)
+
+    async def dependency(current: CurrentUserWithRoles = Depends(get_current_user_with_roles)) -> User:
+        if allow_super and current.is_superuser:
+            return current.user
+
+        if flattened:
+            if not (current.roles & set(flattened)):
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+
+        return current.user
+
+    return dependency

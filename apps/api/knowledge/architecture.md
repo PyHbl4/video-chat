@@ -9,7 +9,7 @@
   регистрирует HTTP-роутеры и оборачивает их Socket.IO-сервером через
   `socketio.ASGIApp`.
 - `videochat_api/api/routes.py` — объединяет публичные маршруты и
-  подключает эндпоинты `system` и `auth` из `videochat_api.api.endpoints`.
+  подключает эндпоинты `system`, `auth` и `admin` из `videochat_api.api.endpoints`.
 - `videochat_api/dependencies.py` — общие зависимости (получение текущего
   пользователя, создание `AsyncSession`, доступ к Redis).
 - `videochat_api/db/` — базовый класс ORM (`base.py`) и фабрика двигателей
@@ -23,6 +23,8 @@
   (`AuthLoginRequest`, `AuthSessionResponse` и др.).
 - `videochat_api/services/rate_limiter.py` — Redis-ограничитель, который
   защищает точки входа от брутфорса.
+- `videochat_api/services/rbac.py` — управление ролями (`RoleService`),
+  проверка прав доступа и аудит действий администраторов.
 - `videochat_api/websocket/server.py` — инициализация Socket.IO сервера и
   обработчики событий подключения/отключения.
 
@@ -79,7 +81,8 @@ Handlers -> Redis / будущие сервисы сигналинга
 
 ## Точки расширения
 - Новые HTTP-модули подключайте в `videochat_api/api/routes.py`, сохраняя
-  единый префикс и схемы ответа.
+  единый префикс и схемы ответа. Для административных разделов используйте
+  `require_roles`, чтобы явно фиксировать требования к ролям.
 - Если добавляете сущности, определяйте модель в `videochat_api/models`,
   схемы в `videochat_api/schemas` и зависимости в `videochat_api/
   dependencies.py`; не забудьте сгенерировать Alembic-миграцию.
@@ -87,7 +90,9 @@ Handlers -> Redis / будущие сервисы сигналинга
   `@sio.event`/`@sio.on`. Общую бизнес-логику выносите в отдельные
   модули, чтобы не перегружать `server.py`.
 - Конфигурацию расширяйте через `videochat_api.config.Settings`; избегайте
-  хардкода URL, секретов и TTL прямо в коде.
+  хардкода URL, секретов и TTL прямо в коде. Переменная
+  `ADMIN_SUPERUSERS` используется `RoleService` для выдачи привилегий вне
+  зависимости от записей в БД.
 
 ## Практики качества
 - Держите `ruff`, `mypy` и `pytest` зелёными; команды уже прописаны в
