@@ -13,6 +13,12 @@ Bearer-токен), выдаваемая через `/auth/login`.
   объекты `auth_session` и `db_session` в `request.state`.
 - `Depends(get_rate_limiter)` — выдаёт Redis-based rate limiter, который
   ограничивает число попыток логина по IP.
+- `Depends(get_current_user_with_roles)` — расширяет `get_current_user`,
+  возвращая набор ролей (`RoleName`) и флаг супер-пользователя из
+  конфигурации (`ADMIN_SUPERUSERS`).
+- `require_roles(...)` — фабрика зависимостей, которая проверяет, что текущий
+  пользователь обладает хотя бы одной из указанных ролей; супер-пользователи
+  обходят проверку независимо от записей в `user_roles`.
 
 ## System (`/healthz`)
 | Метод и путь | Назначение | Тело запроса | Ответ | Требования |
@@ -48,3 +54,22 @@ Bearer-токен), выдаваемая через `/auth/login`.
   access-токеном.
 - Redis обязателен для работы rate limiter'а и менеджера сессий. При отсутствии
   соединения все эндпоинты аутентификации начнут возвращать ошибки.
+
+## Admin (`/admin`)
+| Метод и путь | Назначение | Тело запроса | Ответ | Требования |
+| --- | --- | --- | --- | --- |
+| `GET /admin/users` | Пагинированный список пользователей с фильтрами по email/username, роли и блокировке. | Query-параметры: `page`, `page_size`, `q`, `role`, `blocked`, `sort_by`, `sort_order`. | `AdminUserListResponse` (items, total, page, page_size). | Роль `moderator` или `admin`, либо супер-пользователь. |
+| `POST /admin/users/{id}/block` | Заблокировать пользователя и отозвать его сессии. | `BlockUserRequest` c необязательной причиной. | `AdminUser` с обновлённым состоянием. | Роль `admin` или супер-пользователь. |
+| `POST /admin/users/{id}/unblock` | Снять блокировку. | `BlockUserRequest` (опциональная причина). | `AdminUser`. | Роль `admin` или супер-пользователь. |
+| `POST /admin/users/{id}/roles` | Назначить или отозвать роли. | `RoleUpdateRequest` (`roles`, `mode` — `replace`/`add`/`remove`). | `AdminUser`. | Роль `admin` или супер-пользователь. |
+| `GET /admin/rooms/active` | Заглушка для мониторинга активных комнат. | — | `{ rooms: [], total: 0, note: "TODO ..." }`. | Роль `moderator` или `admin`, либо супер-пользователь. |
+| `GET /admin/calls/active` | Заглушка для мониторинга активных звонков. | — | `{ calls: [], total: 0, note: "TODO ..." }`. | Роль `moderator` или `admin`, либо супер-пользователь. |
+
+**Особенности административного API:**
+- Все действия логируются и записываются в `moderation_events`. Для блокировки
+  автоматически выполняется ревокация активных HTTP/desktop-сессий через
+  `SessionService`.
+- Роль `user` назначается по умолчанию и не может быть удалена — сервис RBAC
+  всегда возвращает её в итоговом списке.
+- Заглушки `rooms/calls` возвращают пустые данные и комментарий `note`; они
+  предназначены для будущей интеграции с задачей `api-rooms-calls`.

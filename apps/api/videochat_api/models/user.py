@@ -25,7 +25,26 @@ class User(Base):
     sessions: Mapped[list["AuthSession"]] = relationship(
         "AuthSession", back_populates="user", cascade="all, delete-orphan"
     )
+    roles: Mapped[list["UserRole"]] = relationship(
+        "UserRole",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    moderation_events: Mapped[list["ModerationEvent"]] = relationship(
+        "ModerationEvent",
+        back_populates="target_user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    moderation_actions: Mapped[list["ModerationEvent"]] = relationship(
+        "ModerationEvent",
+        back_populates="actor_user",
+        lazy="selectin",
+    )
 
 
 from .device import Device  # noqa: E402
 from .session import AuthSession  # noqa: E402
+from .role import UserRole  # noqa: E402
+from .moderation_event import ModerationEvent  # noqa: E402

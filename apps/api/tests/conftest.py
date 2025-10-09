@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from types import SimpleNamespace
-from typing import AsyncGenerator, Awaitable, Callable
+from typing import AsyncGenerator, Awaitable, Callable, Iterable
 
 import pytest
 from fastapi import FastAPI
@@ -10,12 +10,13 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
+from videochat_api.api.endpoints import admin as admin_endpoints
 from videochat_api.api.endpoints import auth as auth_endpoints
 from videochat_api.auth.passwords import hash_password
 from videochat_api.config import settings
 from videochat_api.db.base import Base
 from videochat_api.dependencies import get_rate_limiter, get_session_dependency
-from videochat_api.models import User
+from videochat_api.models import RoleName, User, UserRole
 
 
 @pytest.fixture
@@ -52,6 +53,7 @@ class _AllowAllLimiter:
 async def app(sessionmaker: async_sessionmaker[AsyncSession]) -> FastAPI:
     app = FastAPI()
     app.include_router(auth_endpoints.router)
+    app.include_router(admin_endpoints.router)
 
     async def override_session_dependency() -> AsyncGenerator[AsyncSession, None]:
         async with sessionmaker() as session:
@@ -69,12 +71,15 @@ async def client(app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
 
 
 @pytest.fixture
-def user_factory(sessionmaker: async_sessionmaker[AsyncSession]) -> Callable[[str, str, str, bool], Awaitable[User]]:
+def user_factory(
+    sessionmaker: async_sessionmaker[AsyncSession],
+) -> Callable[[str, str, str, bool, Iterable[RoleName] | None], Awaitable[User]]:
     async def _create_user(
         username: str,
         email: str,
         password: str,
         is_blocked: bool = False,
+        roles: Iterable[RoleName] | None = None,
     ) -> User:
         async with sessionmaker() as session:
             now = datetime.now(timezone.utc)
@@ -87,6 +92,14 @@ def user_factory(sessionmaker: async_sessionmaker[AsyncSession]) -> Callable[[st
                 updated_at=now,
             )
             session.add(user)
+            await session.flush()
+
+            session.add(UserRole(user_id=user.id, role=RoleName.USER))
+            if roles:
+                for role in roles:
+                    if role != RoleName.USER:
+                        session.add(UserRole(user_id=user.id, role=role))
+
             await session.commit()
             await session.refresh(user)
             return user
