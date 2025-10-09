@@ -35,6 +35,18 @@ async def register_user(
     payload: RegisterRequest,
     db: AsyncSession = Depends(get_session_dependency),
 ) -> UserResponse:
+    """
+    Регистрирует нового пользователя в системе.
+    Этот эндпоинт обрабатывает регистрацию пользователя, валидируя входные данные, проверяя на дубликаты,
+    хэшируя пароль и сохраняя пользователя в базе данных.
+    Параметры:
+    - payload (RegisterRequest): Данные регистрации, включая username, email и password.
+    - db (AsyncSession): Сессия базы данных для выполнения запросов и коммитов.
+    Возвращает:
+    - UserResponse: Детали созданного пользователя.
+    Выбрасывает:
+    - HTTPException(400): Если username пустой, пользователь уже существует или возникает ошибка целостности.
+    """
     username = payload.username.strip()
     if not username:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username cannot be blank")
@@ -71,6 +83,23 @@ async def login_user(
     db: AsyncSession = Depends(get_session_dependency),
     rate_limiter: RedisRateLimiter = Depends(get_rate_limiter),
 ) -> LoginResponse:
+    """
+    Аутентифицирует пользователя и создает сессию.
+    Этот эндпоинт обрабатывает вход пользователя, проверяя учетные данные, ограничивая попытки,
+    и создавая либо веб-сессию (с куки), либо сессию устройства (с токенами).
+    Параметры:
+    - request (Request): Объект запроса FastAPI для доступа к информации клиента.
+    - response (Response): Объект ответа FastAPI для установки куки.
+    - payload (LoginRequest): Данные входа, включая identifier (username/email), password и опциональную информацию об устройстве.
+    - db (AsyncSession): Сессия базы данных.
+    - rate_limiter (RedisRateLimiter): Ограничитель для предотвращения brute-force.
+    Возвращает:
+    - LoginResponse: Токены или детали сессии в зависимости от типа устройства.
+    Выбрасывает:
+    - HTTPException(429): Слишком много попыток входа.
+    - HTTPException(401): Недействительные учетные данные.
+    - HTTPException(403): Пользователь заблокирован.
+    """
     client_host = request.client.host if request.client else "unknown"
     rate_limit = await rate_limiter.check(client_host)
     if not rate_limit.allowed:
@@ -143,6 +172,19 @@ async def refresh_session(
     payload: RefreshRequest,
     db: AsyncSession = Depends(get_session_dependency),
 ) -> RefreshResponse:
+    """
+    Обновляет access-токен с помощью refresh-токена.
+    Этот эндпоинт валидирует refresh-токен, проверяет статус пользователя и устройства,
+    и выдает новые токены, поворачивая refresh-токен.
+    Параметры:
+    - payload (RefreshRequest): Содержит refresh_token и опциональный device_id.
+    - db (AsyncSession): Сессия базы данных.
+    Возвращает:
+    - RefreshResponse: Новые access- и refresh-токены.
+    Выбрасывает:
+    - HTTPException(401): Недействительный refresh-токен, устройство или пользователь не найден.
+    - HTTPException(403): Пользователь заблокирован.
+    """
     session = await session_manager.get_session_by_refresh(db, payload.refresh_token)
     if session is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
@@ -189,6 +231,22 @@ async def logout_user(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session_dependency),
 ) -> Response:
+    """
+    Выходит текущего пользователя, отзывая сессию.
+    Этот эндпоинт обрабатывает выход, валидируя CSRF для веб-сессий или refresh_token для устройств,
+    удаляет куки, если применимо, и отзывает сессию в базе данных.
+    Параметры:
+    - request (Request): Для доступа к сессии и заголовкам.
+    - response (Response): Для удаления куки.
+    - _payload (LogoutRequest | None): Опциональный payload с refresh_token для сессий устройств.
+    - current_user (User): Аутентифицированный пользователь.
+    - db (AsyncSession): Сессия базы данных.
+    Возвращает:
+    - Response: Пустой ответ со статусом 204.
+    Выбрасывает:
+    - HTTPException(401): Сессия не найдена.
+    - HTTPException(403): Недействительный refresh-токен или CSRF-токен.
+    """
     session = getattr(request.state, "auth_session", None)
     if session is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session not found")
@@ -221,4 +279,12 @@ async def logout_user(
 
 @router.get("/me", response_model=UserResponse)
 async def read_current_user(current_user: User = Depends(get_current_user)) -> UserResponse:
+    """
+    Получает детали текущего аутентифицированного пользователя.
+    Этот эндпоинт возвращает информацию о пользователе для аутентифицированной сессии.
+    Параметры:
+    - current_user (User): Инжектированный текущий пользователь из зависимости аутентификации.
+    Возвращает:
+    - UserResponse: Валидированные детали пользователя.
+    """
     return UserResponse.model_validate(current_user)

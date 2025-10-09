@@ -52,6 +52,7 @@ class SessionService:
     def _hash_token(raw_token: str) -> str:
         return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
 
+    # Асинхронный метод для проверки/создания устройства.
     async def _ensure_device(
         self,
         db: AsyncSession,
@@ -83,6 +84,7 @@ class SessionService:
             device.revoked_at = None
         return device
 
+    # Создаёт веб-сессию.
     async def create_web_session(
         self,
         db: AsyncSession,
@@ -112,6 +114,7 @@ class SessionService:
             session=session,
         )
 
+    # Создаёт сессию для устройства (десктоп).
     async def create_device_session(
         self,
         db: AsyncSession,
@@ -157,6 +160,7 @@ class SessionService:
             session=session,
         )
 
+    # Кодирует JWT.
     def _encode_access_token(self, session: AuthSession, expires_at: datetime) -> str:
         now = _now()
         payload = {
@@ -169,6 +173,7 @@ class SessionService:
         }
         return jwt.encode(payload, self.jwt_secret, algorithm=self.jwt_algorithm)
 
+    # Получает сессию по куки.
     async def get_session_by_cookie(
         self,
         db: AsyncSession,
@@ -190,6 +195,7 @@ class SessionService:
             return None
         return session
 
+    # Получает по рефреш-токену.
     async def get_session_by_refresh(
         self,
         db: AsyncSession,
@@ -211,6 +217,7 @@ class SessionService:
             return None
         return session
 
+    # Декодирует JWT.
     def decode_access_token(self, token: str) -> dict[str, str | int] | None:
         try:
             payload = jwt.decode(
@@ -224,6 +231,7 @@ class SessionService:
             return None
         return payload
 
+    # Обновляет рефреш-токен.
     async def rotate_refresh_token(
         self,
         db: AsyncSession,
@@ -268,6 +276,7 @@ class SessionService:
             session=session,
         )
 
+    # Отзывает сессию.
     async def revoke_session(self, db: AsyncSession, session: AuthSession) -> None:
         if session.revoked_at:
             return
@@ -284,9 +293,11 @@ class SessionService:
                 .values(refresh_token_hash=None, refresh_token_expires_at=None, revoked_at=_now())
             )
 
+    # Обновляет last_seen_at.
     def touch(self, session: AuthSession) -> None:
         session.last_seen_at = _now()
 
+    # Отзывает все сессии пользователя.
     async def revoke_user_sessions(self, db: AsyncSession, user_id: int) -> None:
         await db.execute(
             update(AuthSession)
@@ -309,4 +320,5 @@ class SessionService:
         )
 
 
+# Создаёт экземпляр сервиса.
 session_manager = SessionService()
