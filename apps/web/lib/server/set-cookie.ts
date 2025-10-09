@@ -51,6 +51,7 @@ export async function applyResponseCookies(response: Response, store?: CookieSto
 
     if (isAuthDebugEnabled()) {
       const { name, value: _value, ...attributes } = parsed
+      void _value
       appliedCookies.push({ name, attributes })
     }
   }
@@ -90,9 +91,11 @@ function collectSetCookieHeaders(headers: Headers): string[] {
     }
   }
 
-  const getSetCookie = (headers as unknown as { getSetCookie?: () => string[] | undefined }).getSetCookie
+  const getSetCookie = (headers as unknown as {
+    getSetCookie?: () => string[] | undefined
+  }).getSetCookie
   if (typeof getSetCookie === "function") {
-    for (const header of getSetCookie() ?? []) {
+    for (const header of getSetCookie.call(headers) ?? []) {
       pushValue(header)
     }
   }
