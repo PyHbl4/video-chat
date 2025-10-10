@@ -6,7 +6,7 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "baseUrl": "./src",
-    "types": ["node"],
+    "types": ["node", "react", "react-dom"],
     "lib": ["dom", "dom.iterable", "esnext"]
   },
   "include": ["src/**/*"],
