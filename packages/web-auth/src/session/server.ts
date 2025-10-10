@@ -2,19 +2,24 @@ import { ApiError } from "@video-chat/contracts"
 import { cookies } from "next/headers"
 
 import { createServerAuthApi } from "../api/server"
-import { CSRF_COOKIE_NAME } from "../env"
-import { createEmptySession, type SessionSnapshot } from "./types"
+import {
+  ACCESS_TOKEN_COOKIE_NAME,
+  CSRF_COOKIE_NAME,
+  REFRESH_TOKEN_COOKIE_NAME
+} from "../env"
+import { createEmptySession, type SessionSnapshot, type SessionTokens } from "./types"
 
 export async function getInitialSession(): Promise<SessionSnapshot> {
   const cookieStore = await cookies()
   const csrfToken = cookieStore.get(CSRF_COOKIE_NAME)?.value ?? null
   const baseSession = createEmptySession(csrfToken)
+  const sessionWithCookies = mergeTokensFromCookies(baseSession, cookieStore)
 
   try {
     const auth = createServerAuthApi()
     const { data } = await auth.me()
     return {
-      ...baseSession,
+      ...sessionWithCookies,
       status: "authenticated",
       user: data,
       fetchedAt: new Date().toISOString()
@@ -22,11 +27,11 @@ export async function getInitialSession(): Promise<SessionSnapshot> {
   } catch (error) {
     if (error instanceof ApiError) {
       if (error.status === 401) {
-        return baseSession
+        return sessionWithCookies
       }
 
       return {
-        ...baseSession,
+        ...sessionWithCookies,
         error: {
           message: error.message,
           code: error.body?.error
@@ -36,11 +41,32 @@ export async function getInitialSession(): Promise<SessionSnapshot> {
     }
 
     return {
-      ...baseSession,
+      ...sessionWithCookies,
       error: {
         message: "Unexpected error while loading session"
       },
       fetchedAt: new Date().toISOString()
+    }
+  }
+}
+
+type CookieStore = Awaited<ReturnType<typeof cookies>>
+
+function mergeTokensFromCookies(base: SessionSnapshot, cookieStore: CookieStore): SessionSnapshot {
+  const tokensFromCookies: Pick<SessionTokens, "accessToken" | "refreshToken"> = {
+    accessToken: cookieStore.get(ACCESS_TOKEN_COOKIE_NAME)?.value ?? null,
+    refreshToken: cookieStore.get(REFRESH_TOKEN_COOKIE_NAME)?.value ?? null
+  }
+
+  if (!tokensFromCookies.accessToken && !tokensFromCookies.refreshToken) {
+    return base
+  }
+
+  return {
+    ...base,
+    tokens: {
+      ...base.tokens,
+      ...tokensFromCookies
     }
   }
 }
