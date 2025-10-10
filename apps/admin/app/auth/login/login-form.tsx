@@ -24,8 +24,10 @@ import {
   Input,
   Spinner
 } from "@video-chat/ui"
-import { loginAction, initialLoginState, useSession } from "@video-chat/web-auth"
-import type { LoginFields } from "@video-chat/web-auth"
+import { useSession } from "@video-chat/web-auth"
+import { initialLoginState } from "@video-chat/web-auth/auth/state"
+import { loginAction } from "@video-chat/web-auth/auth/actions"
+import type { LoginFields } from "@video-chat/web-auth/auth/actions"
 
 function SubmitButton({ children }: { children: React.ReactNode }) {
   const { pending } = useFormStatus()

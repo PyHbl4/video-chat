@@ -24,8 +24,9 @@ import {
   Input,
   Spinner
 } from "@video-chat/ui"
-import { initialRegisterState, registerAction } from "@video-chat/web-auth"
-import type { RegisterFields } from "@video-chat/web-auth"
+import { initialRegisterState } from "@video-chat/web-auth/auth/state"
+import { registerAction } from "@video-chat/web-auth/auth/actions"
+import type { RegisterFields } from "@video-chat/web-auth/auth/actions"
 
 function SubmitButton({ children }: { children: React.ReactNode }) {
   const { pending } = useFormStatus()

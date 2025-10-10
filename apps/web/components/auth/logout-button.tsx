@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation"
 import { useTransition } from "react"
 
 import { Button } from "@video-chat/ui"
-import { logoutAction, useSession } from "@video-chat/web-auth"
+import { useSession } from "@video-chat/web-auth"
+import { logoutAction } from "@video-chat/web-auth/auth/actions"
 
 interface LogoutButtonProps {
   className?: string

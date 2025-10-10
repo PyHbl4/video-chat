@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@video-chat/ui"
 
-import { getInitialSession } from "@video-chat/web-auth"
+import { getInitialSession } from "@video-chat/web-auth/session/server"
 import { LogoutButton } from "@/components/auth/logout-button"
 
 export const metadata: Metadata = {
