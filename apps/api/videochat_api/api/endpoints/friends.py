@@ -112,7 +112,9 @@ async def request_friend(
         if existing.status == FriendModelStatus.PENDING:
             if existing.requester_id == current_user.id:
                 raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Request already sent")
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Incoming request pending")
+
+            await db.refresh(existing, attribute_names=["requester", "addressee"])
+            return _to_friend_schema(existing)
         if existing.status == FriendModelStatus.BLOCKED:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Friendship is blocked")
 

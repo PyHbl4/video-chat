@@ -106,6 +106,41 @@ async def test_decline_friend_updates_status_and_notifies(client: AsyncClient, u
 
 
 @pytest.mark.asyncio
+async def test_request_friend_returns_existing_incoming_pending(
+    client: AsyncClient,
+    user_factory,
+    monkeypatch,
+) -> None:
+    alice = await user_factory("alice", "alice@example.com", "Password123!")
+    bob = await user_factory("bob", "bob@example.com", "Password123!")
+
+    await _login(client, "alice")
+    first_response = await client.post("/friends/request", json={"targetUserId": str(bob.id)})
+    assert first_response.status_code == 202
+    original_id = first_response.json()["id"]
+
+    await _login(client, "bob")
+
+    emitted: list[tuple[str, dict, str | None]] = []
+
+    async def fake_emit(event: str, payload: dict, room: str | None = None, **_: object) -> None:
+        emitted.append((event, payload, room))
+
+    monkeypatch.setattr("videochat_api.api.endpoints.friends.sio.emit", fake_emit)
+
+    second_response = await client.post("/friends/request", json={"targetUserId": str(alice.id)})
+    assert second_response.status_code == 202
+
+    data = second_response.json()
+    assert data["id"] == original_id
+    assert data["status"] == "pending"
+    assert data["requester"]["username"] == "alice"
+    assert data["addressee"]["username"] == "bob"
+
+    assert emitted == []
+
+
+@pytest.mark.asyncio
 async def test_accept_friend_requires_pending_state(client: AsyncClient, user_factory) -> None:
     alice = await user_factory("alice", "alice@example.com", "Password123!")
     bob = await user_factory("bob", "bob@example.com", "Password123!")
