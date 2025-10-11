@@ -2,6 +2,7 @@
 
 import { create } from "zustand"
 
+import { ApiError } from "@video-chat/contracts"
 import type {
   Friend,
   FriendDecisionPayload,
@@ -195,6 +196,15 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
       const { data } = await api.list()
       get().applyFriendList(data)
     } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        console.warn("[friends] list returned 404, assuming empty relationships")
+        set({
+          relationships: {},
+          error: null
+        })
+        return
+      }
+
       console.error("[friends] failed to load relationships", error)
       set({ error: "Не удалось загрузить список друзей" })
       get().pushNotification({

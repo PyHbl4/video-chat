@@ -53,8 +53,8 @@ export function FriendsSidebar({ friendsApi, usersApi }: FriendsSidebarProps) {
   const isEmpty = useMemo(() => incoming.length === 0 && outgoing.length === 0, [incoming.length, outgoing.length])
 
   return (
-    <SidebarContent className="gap-4">
-      <SidebarHeader>
+    <SidebarContent className="gap-6 px-4 py-6">
+      <SidebarHeader className="gap-3 p-0">
         <div>
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Поиск друзей</h2>
           <p className="text-xs text-muted-foreground">Введите имя пользователя или отображаемое имя</p>
@@ -72,7 +72,7 @@ export function FriendsSidebar({ friendsApi, usersApi }: FriendsSidebarProps) {
       </SidebarHeader>
 
       {localQuery.trim().length >= 2 && (
-        <SidebarGroup>
+        <SidebarGroup className="p-0">
           <SidebarGroupLabel>Результаты поиска</SidebarGroupLabel>
           <SidebarGroupContent>
             {isSearching ? (
@@ -108,9 +108,9 @@ export function FriendsSidebar({ friendsApi, usersApi }: FriendsSidebarProps) {
         </SidebarGroup>
       )}
 
-      <SidebarSeparator />
+      <SidebarSeparator className="mx-0" />
 
-      <SidebarGroup>
+      <SidebarGroup className="gap-3 p-0">
         <SidebarGroupLabel>
           Заявки в друзья
           {hasPending && <Badge variant="secondary" className="ml-2">{incoming.length + outgoing.length}</Badge>}
