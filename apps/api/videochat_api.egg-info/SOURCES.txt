@@ -1,6 +1,7 @@
 README.md
 pyproject.toml
 tests/test_auth.py
+tests/test_users.py
 videochat_api/__init__.py
 videochat_api/config.py
 videochat_api/dependencies.py
@@ -15,6 +16,7 @@ videochat_api/api/routes.py
 videochat_api/api/endpoints/__init__.py
 videochat_api/api/endpoints/auth.py
 videochat_api/api/endpoints/system.py
+videochat_api/api/endpoints/users.py
 videochat_api/auth/__init__.py
 videochat_api/auth/passwords.py
 videochat_api/auth/session.py
@@ -27,6 +29,7 @@ videochat_api/models/session.py
 videochat_api/models/user.py
 videochat_api/schemas/__init__.py
 videochat_api/schemas/auth.py
+videochat_api/schemas/users.py
 videochat_api/services/__init__.py
 videochat_api/services/rate_limiter.py
 videochat_api/websocket/__init__.py

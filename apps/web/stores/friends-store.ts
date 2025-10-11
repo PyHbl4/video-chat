@@ -1,6 +1,7 @@
 "use client"
 
 import { create } from "zustand"
+import { nanoid } from 'nanoid'
 
 import { ApiError } from "@video-chat/contracts"
 import type {
