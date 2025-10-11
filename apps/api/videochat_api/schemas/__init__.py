@@ -8,6 +8,7 @@ from .auth import (
     RegisterRequest,
     UserResponse,
 )
+from .users import UserSearchItem, UserSearchResponse
 
 __all__ = [
     "DeviceRequest",
@@ -18,4 +19,6 @@ __all__ = [
     "RefreshResponse",
     "RegisterRequest",
     "UserResponse",
+    "UserSearchItem",
+    "UserSearchResponse",
 ]

@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from videochat_api.api.endpoints import auth as auth_endpoints
+from videochat_api.api.endpoints import users as users_endpoints
 from videochat_api.auth.passwords import hash_password
 from videochat_api.config import settings
 from videochat_api.db.base import Base
@@ -52,6 +53,7 @@ class _AllowAllLimiter:
 async def app(sessionmaker: async_sessionmaker[AsyncSession]) -> FastAPI:
     app = FastAPI()
     app.include_router(auth_endpoints.router)
+    app.include_router(users_endpoints.router)
 
     async def override_session_dependency() -> AsyncGenerator[AsyncSession, None]:
         async with sessionmaker() as session:
