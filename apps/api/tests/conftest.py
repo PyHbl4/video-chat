@@ -11,12 +11,15 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from videochat_api.api.endpoints import auth as auth_endpoints
+from videochat_api.api.endpoints import friends as friends_endpoints
 from videochat_api.api.endpoints import users as users_endpoints
 from videochat_api.auth.passwords import hash_password
 from videochat_api.config import settings
 from videochat_api.db.base import Base
 from videochat_api.dependencies import get_rate_limiter, get_session_dependency
 from videochat_api.models import User
+from videochat_api.services import PresenceService
+from videochat_api.websocket.server import bind_fastapi_app
 
 
 @pytest.fixture
@@ -49,11 +52,35 @@ class _AllowAllLimiter:
         return None
 
 
+class _FakeRedis:
+    def __init__(self) -> None:
+        self._store: dict[str, str] = {}
+
+    async def set(self, key: str, value: str, ex: int | None = None) -> None:  # noqa: ARG002
+        self._store[key] = value
+
+    async def get(self, key: str) -> str | None:
+        return self._store.get(key)
+
+    async def mget(self, keys: list[str]) -> list[str | None]:
+        return [self._store.get(key) for key in keys]
+
+    async def delete(self, key: str) -> None:
+        self._store.pop(key, None)
+
+    async def expire(self, key: str, ttl: int) -> None:  # noqa: ARG002
+        return None
+
+    async def aclose(self) -> None:
+        self._store.clear()
+
+
 @pytest.fixture
 async def app(sessionmaker: async_sessionmaker[AsyncSession]) -> FastAPI:
     app = FastAPI()
     app.include_router(auth_endpoints.router)
     app.include_router(users_endpoints.router)
+    app.include_router(friends_endpoints.router)
 
     async def override_session_dependency() -> AsyncGenerator[AsyncSession, None]:
         async with sessionmaker() as session:
@@ -61,6 +88,11 @@ async def app(sessionmaker: async_sessionmaker[AsyncSession]) -> FastAPI:
 
     app.dependency_overrides[get_session_dependency] = override_session_dependency
     app.dependency_overrides[get_rate_limiter] = lambda: _AllowAllLimiter()
+
+    fake_redis = _FakeRedis()
+    app.state.redis = fake_redis
+    app.state.presence_service = PresenceService(fake_redis)
+    bind_fastapi_app(app)
     return app
 
 

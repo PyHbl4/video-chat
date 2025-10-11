@@ -45,3 +45,7 @@ class FriendRequestPayload(BaseModel):
 
 class FriendDecisionPayload(BaseModel):
     request_id: str = Field(alias="requestId", serialization_alias="requestId")
+
+
+class ListFriendsResponse(BaseModel):
+    items: list[Friend] = Field(default_factory=list)

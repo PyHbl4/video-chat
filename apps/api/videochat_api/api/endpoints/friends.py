@@ -1,15 +1,28 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import uuid
+from typing import Iterable
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import and_, or_, select
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from videochat_api.dependencies import get_current_user, get_session_dependency
 from videochat_api.models import FriendRelationship, FriendStatus as FriendModelStatus, User
-from videochat_api.schemas import Friend as FriendSchema
-from videochat_api.schemas import FriendRequestPayload, FriendStatus, FriendUser
+from videochat_api.schemas import (
+    Friend as FriendSchema,
+    FriendDecisionPayload,
+    FriendRequestPayload,
+    FriendStatus,
+    FriendUser,
+    ListFriendsResponse,
+)
+from videochat_api.services.friendships import (
+    find_mutual_friendship,
+    get_friendship_by_id,
+    list_friendships,
+)
+from videochat_api.websocket.server import sio
 
 router = APIRouter(prefix="/friends", tags=["friends"])
 
@@ -26,6 +39,49 @@ def _to_friend_user(user: User | None) -> FriendUser | None:
         bio=None,
         created_at=user.created_at,
     )
+
+
+async def _emit_friend_event(
+    event: str,
+    friend: FriendSchema,
+    recipients: Iterable[int],
+    reason: str | None = None,
+) -> None:
+    payload = {"friend": friend.model_dump(by_alias=True)}
+    if reason:
+        payload["reason"] = reason
+
+    for user_id in set(recipients):
+        await sio.emit(event, payload, room=f"user:{user_id}")
+
+
+def _to_friend_schema(friend: FriendRelationship) -> FriendSchema:
+    return FriendSchema(
+        id=str(friend.id),
+        requester_id=str(friend.requester_id),
+        addressee_id=str(friend.addressee_id),
+        status=FriendStatus(friend.status.value),
+        created_at=friend.created_at,
+        responded_at=friend.responded_at,
+        requester=_to_friend_user(getattr(friend, "requester", None)),
+        addressee=_to_friend_user(getattr(friend, "addressee", None)),
+    )
+
+
+@router.get("/", response_model=ListFriendsResponse)
+async def list_friends(
+    status_filter: FriendStatus | None = Query(default=None, alias="status"),
+    db: AsyncSession = Depends(get_session_dependency),
+    current_user: User = Depends(get_current_user),
+) -> ListFriendsResponse:
+    status_model = (
+        FriendModelStatus(status_filter.value)
+        if status_filter is not None
+        else None
+    )
+    friendships = await list_friendships(db, current_user.id, status_model)
+    items = [_to_friend_schema(friendship) for friendship in friendships]
+    return ListFriendsResponse(items=items)
 
 
 @router.post("/request", response_model=FriendSchema, status_code=status.HTTP_202_ACCEPTED)
@@ -46,20 +102,7 @@ async def request_friend(
     if target_user is None or target_user.is_blocked:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Target user not found")
 
-    stmt = select(FriendRelationship).where(
-        or_(
-            and_(
-                FriendRelationship.requester_id == current_user.id,
-                FriendRelationship.addressee_id == target_user.id,
-            ),
-            and_(
-                FriendRelationship.requester_id == target_user.id,
-                FriendRelationship.addressee_id == current_user.id,
-            ),
-        )
-    )
-    result = await db.execute(stmt)
-    existing = result.scalars().first()
+    existing = await find_mutual_friendship(db, current_user.id, target_user.id)
 
     now = datetime.now(timezone.utc)
 
@@ -89,18 +132,95 @@ async def request_friend(
 
     await db.flush()
     await db.commit()
-    await db.refresh(friend)
+    await db.refresh(friend, attribute_names=["requester", "addressee"])
 
-    requester = current_user if friend.requester_id == current_user.id else target_user
-    addressee = target_user if friend.addressee_id == target_user.id else current_user
+    friend_schema = _to_friend_schema(friend)
 
-    return FriendSchema(
-        id=str(friend.id),
-        requester_id=str(friend.requester_id),
-        addressee_id=str(friend.addressee_id),
-        status=FriendStatus(friend.status.value),
-        created_at=friend.created_at,
-        responded_at=friend.responded_at,
-        requester=_to_friend_user(requester),
-        addressee=_to_friend_user(addressee),
+    await _emit_friend_event(
+        "friends:request",
+        friend_schema,
+        recipients=[friend.addressee_id],
+        reason=f"{current_user.username} отправил вам заявку в друзья",
     )
+
+    return friend_schema
+
+
+@router.post("/accept", response_model=FriendSchema)
+async def accept_friend(
+    payload: FriendDecisionPayload,
+    db: AsyncSession = Depends(get_session_dependency),
+    current_user: User = Depends(get_current_user),
+) -> FriendSchema:
+    try:
+        request_id = uuid.UUID(payload.request_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid request id") from exc
+
+    friend = await get_friendship_by_id(db, request_id)
+    if friend is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Friend request not found")
+
+    if friend.addressee_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot accept this request")
+
+    if friend.status != FriendModelStatus.PENDING:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Request is not pending")
+
+    friend.status = FriendModelStatus.ACCEPTED
+    friend.responded_at = datetime.now(timezone.utc)
+
+    await db.flush()
+    await db.commit()
+    await db.refresh(friend, attribute_names=["requester", "addressee"])
+
+    friend_schema = _to_friend_schema(friend)
+
+    await _emit_friend_event(
+        "friends:accepted",
+        friend_schema,
+        recipients=[friend.requester_id, friend.addressee_id],
+        reason=f"{current_user.username} принял заявку в друзья",
+    )
+
+    return friend_schema
+
+
+@router.post("/decline", response_model=FriendSchema)
+async def decline_friend(
+    payload: FriendDecisionPayload,
+    db: AsyncSession = Depends(get_session_dependency),
+    current_user: User = Depends(get_current_user),
+) -> FriendSchema:
+    try:
+        request_id = uuid.UUID(payload.request_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid request id") from exc
+
+    friend = await get_friendship_by_id(db, request_id)
+    if friend is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Friend request not found")
+
+    if friend.addressee_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot decline this request")
+
+    if friend.status != FriendModelStatus.PENDING:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Request is not pending")
+
+    friend.status = FriendModelStatus.DECLINED
+    friend.responded_at = datetime.now(timezone.utc)
+
+    await db.flush()
+    await db.commit()
+    await db.refresh(friend, attribute_names=["requester", "addressee"])
+
+    friend_schema = _to_friend_schema(friend)
+
+    await _emit_friend_event(
+        "friends:declined",
+        friend_schema,
+        recipients=[friend.requester_id],
+        reason=f"{current_user.username} отклонил заявку в друзья",
+    )
+
+    return friend_schema

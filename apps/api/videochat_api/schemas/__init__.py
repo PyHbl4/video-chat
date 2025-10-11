@@ -12,6 +12,7 @@ from .friends import (
     Friend,
     FriendDecisionPayload,
     FriendRequestPayload,
+    ListFriendsResponse,
     FriendStatus,
     FriendUser,
 )
@@ -33,4 +34,5 @@ __all__ = [
     "FriendStatus",
     "FriendRequestPayload",
     "FriendDecisionPayload",
+    "ListFriendsResponse",
 ]
