@@ -43,7 +43,10 @@ export class ApiClient {
 
   constructor(config: ApiClientConfig) {
     this.baseUrl = config.baseUrl.replace(/\/$/, "")
-    this.fetchImpl = config.fetch ?? fetch
+    const fetchLike = config.fetch ?? fetch
+    this.fetchImpl = ((input: Parameters<FetchLike>[0], init?: Parameters<FetchLike>[1]) =>
+      fetchLike(input, init)
+    ) as FetchLike
     this.defaultHeaders = config.defaultHeaders
     this.getAccessToken = config.getAccessToken
     this.getCsrfToken = config.getCsrfToken

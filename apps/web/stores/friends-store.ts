@@ -434,41 +434,115 @@ function generateNotificationId(): string {
   return `note-${Math.random().toString(36).slice(2, 10)}`
 }
 
-export function selectAcceptedFriends(state: FriendsState): FriendViewModel[] {
-  return Object.values(state.relationships)
-    .filter((friend) => friend.relationship.status === "accepted" && friend.direction === "accepted")
-    .sort((a, b) => sortUsersByDisplayName(a.user, b.user))
-}
+type RelationshipsSelector = (state: FriendsState) => FriendViewModel[]
 
-export function selectIncomingRequests(state: FriendsState): FriendViewModel[] {
-  return Object.values(state.relationships)
-    .filter((friend) => friend.relationship.status === "pending" && friend.direction === "incoming")
-    .sort((a, b) => sortUsersByDisplayName(a.user, b.user))
-}
+function createRelationshipsSelector(
+  predicate: (friend: FriendViewModel) => boolean
+): RelationshipsSelector {
+  let lastRelationships: FriendsState["relationships"] | null = null
+  let lastResult: FriendViewModel[] = []
 
-export function selectOutgoingRequests(state: FriendsState): FriendViewModel[] {
-  return Object.values(state.relationships)
-    .filter((friend) => friend.relationship.status === "pending" && friend.direction === "outgoing")
-    .sort((a, b) => sortUsersByDisplayName(a.user, b.user))
-}
+  return (state) => {
+    if (state.relationships === lastRelationships) {
+      return lastResult
+    }
 
-export function selectFilteredAccepted(state: FriendsState): FriendViewModel[] {
-  const friends = selectAcceptedFriends(state)
-  if (state.filter === "all") {
-    return friends
+    lastRelationships = state.relationships
+    lastResult = Object.values(state.relationships)
+      .filter(predicate)
+      .sort((a, b) => sortUsersByDisplayName(a.user, b.user))
+
+    return lastResult
   }
-
-  return friends.filter((friend) => friend.presence === state.filter)
 }
 
-export function selectOnlineCount(state: FriendsState): number {
-  return selectAcceptedFriends(state).filter((friend) => friend.presence === "online").length
-}
+export const selectAcceptedFriends: RelationshipsSelector = createRelationshipsSelector(
+  (friend) => friend.relationship.status === "accepted" && friend.direction === "accepted"
+)
 
-export function selectOfflineCount(state: FriendsState): number {
-  return selectAcceptedFriends(state).filter((friend) => friend.presence === "offline").length
-}
+export const selectIncomingRequests: RelationshipsSelector = createRelationshipsSelector(
+  (friend) => friend.relationship.status === "pending" && friend.direction === "incoming"
+)
 
-export function selectHasPending(state: FriendsState): boolean {
-  return selectIncomingRequests(state).length > 0 || selectOutgoingRequests(state).length > 0
-}
+export const selectOutgoingRequests: RelationshipsSelector = createRelationshipsSelector(
+  (friend) => friend.relationship.status === "pending" && friend.direction === "outgoing"
+)
+
+export const selectFilteredAccepted = (() => {
+  let lastFilter: FriendsFilter | null = null
+  let lastAccepted: FriendViewModel[] | null = null
+  let lastResult: FriendViewModel[] = []
+
+  return (state: FriendsState): FriendViewModel[] => {
+    const accepted = selectAcceptedFriends(state)
+
+    if (state.filter === "all") {
+      lastFilter = state.filter
+      lastAccepted = accepted
+      lastResult = accepted
+      return accepted
+    }
+
+    if (lastFilter === state.filter && lastAccepted === accepted) {
+      return lastResult
+    }
+
+    lastFilter = state.filter
+    lastAccepted = accepted
+    lastResult = accepted.filter((friend) => friend.presence === state.filter)
+
+    return lastResult
+  }
+})()
+
+export const selectOnlineCount = (() => {
+  let lastAccepted: FriendViewModel[] | null = null
+  let lastCount = 0
+
+  return (state: FriendsState): number => {
+    const accepted = selectAcceptedFriends(state)
+    if (accepted === lastAccepted) {
+      return lastCount
+    }
+
+    lastAccepted = accepted
+    lastCount = accepted.filter((friend) => friend.presence === "online").length
+    return lastCount
+  }
+})()
+
+export const selectOfflineCount = (() => {
+  let lastAccepted: FriendViewModel[] | null = null
+  let lastCount = 0
+
+  return (state: FriendsState): number => {
+    const accepted = selectAcceptedFriends(state)
+    if (accepted === lastAccepted) {
+      return lastCount
+    }
+
+    lastAccepted = accepted
+    lastCount = accepted.filter((friend) => friend.presence === "offline").length
+    return lastCount
+  }
+})()
+
+export const selectHasPending = (() => {
+  let lastIncoming: FriendViewModel[] | null = null
+  let lastOutgoing: FriendViewModel[] | null = null
+  let lastValue = false
+
+  return (state: FriendsState): boolean => {
+    const incoming = selectIncomingRequests(state)
+    const outgoing = selectOutgoingRequests(state)
+
+    if (incoming === lastIncoming && outgoing === lastOutgoing) {
+      return lastValue
+    }
+
+    lastIncoming = incoming
+    lastOutgoing = outgoing
+    lastValue = incoming.length > 0 || outgoing.length > 0
+    return lastValue
+  }
+})()
