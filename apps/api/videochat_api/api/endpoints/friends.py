@@ -47,7 +47,7 @@ async def _emit_friend_event(
     recipients: Iterable[int],
     reason: str | None = None,
 ) -> None:
-    payload = {"friend": friend.model_dump(by_alias=True)}
+    payload = {"friend": friend.model_dump(mode="json", by_alias=True)}
     if reason:
         payload["reason"] = reason
 

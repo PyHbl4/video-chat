@@ -1,6 +1,6 @@
 ---
 title: "API: Friends, requests и presence"
-status: in_progress
+status: review-ready
 assignee: "codex"
 priority: high
 eta: null
@@ -14,11 +14,11 @@ links: ["docs/codex/API-SPEC-TODO.md", "docs/codex/SIGNALING-WEBRTC-TODO.md"]
 
 ## Что сделать
 
-- [ ] Добавить модели и миграцию для `friends` (статусы requested/accepted/blocked) и сервис слой для проверок взаимности.
-- [ ] Реализовать эндпоинты `/friends/request`, `/friends/accept`, `/friends/decline`, `/friends` и поиск `/users/search`.
-- [ ] Настроить Redis presence: хранение последней активности, TTL, отдельные каналы socket.io `presence:update`.
-- [ ] Реализовать socket.io namespacing (`user:{id}`) и события при изменении дружбы/онлайн-статуса.
-- [ ] Покрыть тестами REST и базовый WS-флоу (например, через `async_client` + fake Redis).
+- [x] Добавить модели и миграцию для `friends` (статусы requested/accepted/blocked) и сервис слой для проверок взаимности.
+- [x] Реализовать эндпоинты `/friends/request`, `/friends/accept`, `/friends/decline`, `/friends` и поиск `/users/search`.
+- [x] Настроить Redis presence: хранение последней активности, TTL, отдельные каналы socket.io `presence:update`.
+- [x] Реализовать socket.io namespacing (`user:{id}`) и события при изменении дружбы/онлайн-статуса.
+- [x] Покрыть тестами REST и базовый WS-флоу (например, через `async_client` + fake Redis).
 
 ## Заметки
 
@@ -79,3 +79,12 @@ links: ["docs/codex/API-SPEC-TODO.md", "docs/codex/SIGNALING-WEBRTC-TODO.md"]
   - Добавили в FastAPI-роуты модуль `users` с эндпоинтом `/users/search`, который валидирует запрос, ищет активных пользователей по подстроке `username`, исключает текущего пользователя и возвращает DTO в camelCase согласно контракту.
 - Как мы убедимся, что это работает и не конфликтует с другими решениями:
   - Написали pytest-ы, которые логинят пользователя, выполняют поиск и проверяют порядок/структуру ответа, а также валидацию коротких запросов.
+
+### 7. 2025-10-07 15:30 (GMT + 2). Стабилизировали рассылку socket.io событий дружбы
+
+- Что хотим сделать и для чего (если причина - наш прошлый баг, описать его причину):
+  - Починить падение `friends:accepted` из-за сериализации `datetime`, из-за чего заявка не принималась и фронтенд получал 500.
+- Как мы это реализуем:
+  - В `_emit_friend_event` switched на `model_dump(mode="json")`, добавив регрессионный тест, который перехватывает `sio.emit` и проверяет формат payload.
+- Как мы убедимся, что это работает и не конфликтует с другими решениями:
+  - Тесты убеждаются, что `createdAt`/`respondedAt` приходят строками; локально проверено, что запрос можно принять без 500.
