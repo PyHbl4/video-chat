@@ -1,9 +1,12 @@
 from .auth import (
-    AuthTokensResponse,
-    LoginPayload,
-    LogoutPayload,
-    RegisterPayload,
-    SessionInfo,
+    DeviceRequest,
+    LoginRequest,
+    LoginResponse,
+    LogoutRequest,
+    RefreshRequest,
+    RefreshResponse,
+    RegisterRequest,
+    UserResponse,
 )
 from .friends import (
     Friend,
@@ -15,11 +18,14 @@ from .friends import (
 from .users import UserSearchItem, UserSearchResponse
 
 __all__ = [
-    "AuthTokensResponse",
-    "LoginPayload",
-    "LogoutPayload",
-    "RegisterPayload",
-    "SessionInfo",
+    "RegisterRequest",
+    "DeviceRequest",
+    "LoginRequest",
+    "LoginResponse",
+    "RefreshRequest",
+    "RefreshResponse",
+    "LogoutRequest",
+    "UserResponse",
     "UserSearchItem",
     "UserSearchResponse",
     "Friend",
