@@ -1,0 +1,130 @@
+/*
+ * Shared design tokens for the video-chat applications.
+ * Light and dark theme values follow the UX branding guidelines
+ * described in docs/ui-ux/UX_SUPPLEMENT_ownSpace.md.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* Layout */
+  --radius: 0.875rem; /* 14px */
+  --shadow-soft: 0 24px 64px rgba(15, 23, 42, 0.12);
+  --shadow-soft-strong: 0 32px 80px rgba(15, 23, 42, 0.16);
+
+  /* Base palette */
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+
+  --card: #f6f7f8;
+  --card-foreground: #0a0a0a;
+
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+
+  --muted: #eef1f5;
+  --muted-foreground: #6b7280;
+
+  --secondary: #e3e8ef;
+  --secondary-foreground: #0f172a;
+
+  /* Accent */
+  --primary: #10b981;
+  --primary-foreground: #ecfdf5;
+
+  --accent: #bbf7d0;
+  --accent-foreground: #047857;
+
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  --warning: #f59e0b;
+  --warning-foreground: #0f172a;
+
+  --success: #22c55e;
+  --success-foreground: #022c22;
+
+  --border: #d5dbe3;
+  --input: #cfd6df;
+  --ring: #10b981;
+
+  /* Sidebar shell */
+  --sidebar: #f0f4f8;
+  --sidebar-foreground: #0a0a0a;
+  --sidebar-primary: #10b981;
+  --sidebar-primary-foreground: #ecfdf5;
+  --sidebar-accent: #a7f3d0;
+  --sidebar-accent-foreground: #065f46;
+  --sidebar-border: rgba(15, 23, 42, 0.08);
+  --sidebar-ring: rgba(16, 185, 129, 0.35);
+
+  /* Charts */
+  --chart-1: #10b981;
+  --chart-2: #0ea5e9;
+  --chart-3: #6366f1;
+  --chart-4: #f59e0b;
+  --chart-5: #ec4899;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --background: #0a0a0a;
+  --foreground: #f5f5f5;
+
+  --card: #111214;
+  --card-foreground: #f8fafc;
+
+  --popover: #111214;
+  --popover-foreground: #f8fafc;
+
+  --muted: #1b2027;
+  --muted-foreground: #9aa0a6;
+
+  --secondary: #1f2630;
+  --secondary-foreground: #e2e8f0;
+
+  --primary: #10b981;
+  --primary-foreground: #022c22;
+
+  --accent: #0f1f1c;
+  --accent-foreground: #34d399;
+
+  --destructive: #f87171;
+  --destructive-foreground: #0b0b0b;
+
+  --warning: #fbbf24;
+  --warning-foreground: #0b0b0b;
+
+  --success: #34d399;
+  --success-foreground: #022c22;
+
+  --border: rgba(148, 163, 184, 0.25);
+  --input: rgba(148, 163, 184, 0.25);
+  --ring: rgba(16, 185, 129, 0.55);
+
+  --sidebar: #101419;
+  --sidebar-foreground: #f8fafc;
+  --sidebar-primary: #10b981;
+  --sidebar-primary-foreground: #022c22;
+  --sidebar-accent: #064e3b;
+  --sidebar-accent-foreground: #bbf7d0;
+  --sidebar-border: rgba(148, 163, 184, 0.35);
+  --sidebar-ring: rgba(16, 185, 129, 0.6);
+
+  --chart-1: #34d399;
+  --chart-2: #38bdf8;
+  --chart-3: #818cf8;
+  --chart-4: #facc15;
+  --chart-5: #f472b6;
+
+  --shadow-soft: 0 24px 64px rgba(0, 0, 0, 0.45);
+  --shadow-soft-strong: 0 32px 96px rgba(0, 0, 0, 0.6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --shadow-soft: 0 16px 40px rgba(15, 23, 42, 0.08);
+    --shadow-soft-strong: 0 20px 56px rgba(15, 23, 42, 0.12);
+  }
+}

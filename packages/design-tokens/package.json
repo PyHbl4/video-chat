@@ -1,0 +1,14 @@
+{
+  "name": "@video-chat/design-tokens",
+  "version": "0.0.0",
+  "type": "module",
+  "license": "MIT",
+  "files": [
+    "tokens.css",
+    "README.md"
+  ],
+  "exports": {
+    ".": "./tokens.css",
+    "./tokens.css": "./tokens.css"
+  }
+}
