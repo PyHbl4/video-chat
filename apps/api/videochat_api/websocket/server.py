@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
@@ -24,6 +26,9 @@ sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
 _fastapi_app: FastAPI | None = None
 _active_user_sids: dict[int, set[str]] = defaultdict(set)
 _sid_to_user: dict[str, int] = {}
+_presence_refresh_tasks: dict[int, asyncio.Task[None]] = {}
+
+_REFRESH_MARGIN_SECONDS = 5
 
 
 @dataclass(frozen=True, slots=True)
@@ -127,6 +132,35 @@ def _get_presence_service(scope: dict[str, Any]) -> PresenceService | None:
     return getattr(app.state, "presence_service", None) if app is not None else None
 
 
+def _schedule_presence_refresh(user_id: int, presence_service: PresenceService) -> None:
+    if user_id in _presence_refresh_tasks:
+        return
+
+    async def _keepalive() -> None:
+        interval = max(1, presence_service.ttl - _REFRESH_MARGIN_SECONDS)
+        try:
+            while True:
+                await asyncio.sleep(interval)
+                if not _active_user_sids.get(user_id):
+                    break
+                try:
+                    refreshed = await presence_service.refresh_online(user_id)
+                    if not refreshed and not _active_user_sids.get(user_id):
+                        break
+                except asyncio.CancelledError:  # pragma: no cover - cooperative cancellation
+                    raise
+                except Exception:  # pragma: no cover - defensive
+                    logger.exception(
+                        "Failed to refresh presence", extra={"user_id": user_id}
+                    )
+        except asyncio.CancelledError:  # pragma: no cover - cooperative cancellation
+            raise
+        finally:
+            _presence_refresh_tasks.pop(user_id, None)
+
+    _presence_refresh_tasks[user_id] = asyncio.create_task(_keepalive())
+
+
 @sio.event
 async def connect(sid: str, environ: dict[str, Any], auth: dict[str, Any] | None) -> None:
     scope: dict[str, Any] = environ.get("asgi.scope", {})
@@ -153,6 +187,7 @@ async def connect(sid: str, environ: dict[str, Any], auth: dict[str, Any] | None
         await _broadcast_presence(update, friend_ids)
 
     if presence_service:
+        _schedule_presence_refresh(socket_user.id, presence_service)
         await _send_snapshot(sid, presence_service, friend_ids)
 
     logger.info(
@@ -179,6 +214,11 @@ async def disconnect(sid: str) -> None:
     connections.discard(sid)
     if not connections:
         _active_user_sids.pop(user_id, None)
+        task = _presence_refresh_tasks.get(user_id)
+        if task is not None:
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
         if presence_service:
             update = await presence_service.set_offline(user_id)
             await _broadcast_presence(update, friend_ids)

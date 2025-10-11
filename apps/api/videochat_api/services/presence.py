@@ -29,6 +29,10 @@ class PresenceService:
     def _key(user_id: int) -> str:
         return f"presence:user:{user_id}"
 
+    @property
+    def ttl(self) -> int:
+        return self._ttl
+
     async def set_status(self, user_id: int, status: PresenceStatus) -> PresenceState:
         updated_at = datetime.now(timezone.utc)
         payload = {"status": status, "updatedAt": updated_at.isoformat()}
@@ -40,6 +44,21 @@ class PresenceService:
 
     async def set_offline(self, user_id: int) -> PresenceState:
         return await self.set_status(user_id, "offline")
+
+    async def refresh_online(self, user_id: int) -> bool:
+        """Extend TTL for an online user without changing the payload.
+
+        Returns ``True`` when the TTL was refreshed successfully and ``False`` when
+        no presence information existed (in which case the caller may need to
+        re-publish the online status).
+        """
+
+        refreshed = await self._redis.expire(self._key(user_id), self._ttl)
+        if refreshed:
+            return True
+
+        await self.set_online(user_id)
+        return False
 
     async def get_status(self, user_id: int) -> PresenceState | None:
         raw = await self._redis.get(self._key(user_id))
