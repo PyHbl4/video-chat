@@ -142,6 +142,8 @@ export function AppShell({ user, children }: AppShellProps) {
             <AppTopBar
               user={user}
               currentNav={currentNav}
+              pathname={pathname}
+              getBadgeValue={getBadgeValue}
               onOpenSearch={() => router.push("/app/search")}
             />
             <main className="flex-1 space-y-6 px-4 pb-24 pt-6 transition-colors duration-200 md:px-6 md:pb-10 lg:px-8">
@@ -252,58 +254,63 @@ function AppSidebar({ pathname, user, getBadgeValue }: AppSidebarProps) {
 interface AppTopBarProps {
   user: SessionSnapshot["user"]
   currentNav: MainNavItem | undefined
+  pathname: string
+  getBadgeValue: (item: MainNavItem) => number
   onOpenSearch: () => void
 }
 
-function AppTopBar({ user, currentNav, onOpenSearch }: AppTopBarProps) {
+function AppTopBar({ user, currentNav, pathname, getBadgeValue, onOpenSearch }: AppTopBarProps) {
   return (
     <header className="sticky top-0 z-30 border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
-      <div className="flex flex-col gap-4 px-4 py-4 transition-colors duration-200 md:flex-row md:items-center md:justify-between md:px-6 lg:px-8">
-        <div className="flex items-center gap-3">
-          <SidebarTrigger className="md:hidden" aria-label="Открыть меню" />
-          <div>
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Раздел
-            </p>
-            <h2 className="text-lg font-semibold leading-tight">
-              {currentNav?.label ?? "Приложение"}
-            </h2>
-            {currentNav?.description ? (
-              <p className="hidden text-sm text-muted-foreground sm:block">
-                {currentNav.description}
+      <div className="flex flex-col gap-4 px-4 py-4 transition-colors duration-200 md:px-6 lg:px-8">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-start gap-3 md:items-center">
+            <SidebarTrigger className="md:hidden" aria-label="Открыть меню" />
+            <div>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                Раздел
               </p>
-            ) : null}
+              <h2 className="text-lg font-semibold leading-tight">
+                {currentNav?.label ?? "Приложение"}
+              </h2>
+              {currentNav?.description ? (
+                <p className="hidden text-sm text-muted-foreground sm:block">
+                  {currentNav.description}
+                </p>
+              ) : null}
+            </div>
+          </div>
+          <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+            <div className="relative w-full sm:w-72">
+              <SearchIcon
+                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
+              />
+              <Input
+                placeholder="Искать людей, чаты и файлы"
+                className="cursor-pointer pl-9"
+                role="combobox"
+                onFocus={onOpenSearch}
+                onClick={onOpenSearch}
+                readOnly
+              />
+            </div>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+              <Button className="gap-2 shadow-sm" variant="outline" disabled>
+                <MessageSquarePlusIcon className="size-4" aria-hidden />
+                Новый чат
+              </Button>
+              <Button className="gap-2 shadow-sm" variant="default" disabled>
+                <CalendarPlusIcon className="size-4" aria-hidden />
+                Запланировать звонок
+              </Button>
+            </div>
+            <Avatar className="size-9 border">
+              <AvatarFallback>{user?.username?.slice(0, 2).toUpperCase() ?? "??"}</AvatarFallback>
+            </Avatar>
           </div>
         </div>
-        <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-          <div className="relative w-full sm:w-72">
-            <SearchIcon
-              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden
-            />
-            <Input
-              placeholder="Искать людей, чаты и файлы"
-              className="cursor-pointer pl-9"
-              role="combobox"
-              onFocus={onOpenSearch}
-              onClick={onOpenSearch}
-              readOnly
-            />
-          </div>
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-            <Button className="gap-2 shadow-sm" variant="outline" disabled>
-              <MessageSquarePlusIcon className="size-4" aria-hidden />
-              Новый чат
-            </Button>
-            <Button className="gap-2 shadow-sm" variant="default" disabled>
-              <CalendarPlusIcon className="size-4" aria-hidden />
-              Запланировать звонок
-            </Button>
-          </div>
-          <Avatar className="size-9 border">
-            <AvatarFallback>{user?.username?.slice(0, 2).toUpperCase() ?? "??"}</AvatarFallback>
-          </Avatar>
-        </div>
+        <AppMainMenu pathname={pathname} getBadgeValue={getBadgeValue} />
       </div>
     </header>
   )
@@ -341,6 +348,50 @@ function AppMobileNav({ pathname, getBadgeValue }: AppMobileNavProps) {
           )
         })}
       </div>
+    </nav>
+  )
+}
+
+interface AppMainMenuProps {
+  pathname: string
+  getBadgeValue: (item: MainNavItem) => number
+}
+
+function AppMainMenu({ pathname, getBadgeValue }: AppMainMenuProps) {
+  return (
+    <nav
+      className="hidden items-center gap-1 overflow-x-auto pb-1 md:flex"
+      aria-label="Основное меню"
+    >
+      {MAIN_NAV.map((item) => {
+        const isActive = pathname.startsWith(item.href)
+        const badgeValue = getBadgeValue(item)
+
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={cn(
+              "group relative flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
+              isActive
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
+            )}
+            aria-current={isActive ? "page" : undefined}
+          >
+            <span>{item.label}</span>
+            {badgeValue > 0 ? (
+              <span className="inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-primary-foreground/20 px-1 text-[11px] font-semibold text-primary-foreground">
+                {badgeValue > 99 ? "99+" : badgeValue}
+              </span>
+            ) : item.status ? (
+              <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-600 dark:bg-emerald-400/15 dark:text-emerald-100">
+                {item.status === "beta" ? "Beta" : "New"}
+              </span>
+            ) : null}
+          </Link>
+        )
+      })}
     </nav>
   )
 }
