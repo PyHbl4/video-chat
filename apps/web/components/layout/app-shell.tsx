@@ -29,7 +29,12 @@ import {
   cn
 } from "@video-chat/ui"
 import type { SessionSnapshot } from "@video-chat/web-auth"
-import { CalendarPlusIcon, HelpCircleIcon, SearchIcon } from "lucide-react"
+import {
+  CalendarPlusIcon,
+  HelpCircleIcon,
+  MessageSquarePlusIcon,
+  SearchIcon
+} from "lucide-react"
 import { toast } from "sonner"
 
 import { AppUserProvider } from "@/components/app/app-user-context"
@@ -105,6 +110,13 @@ interface AppDesktopSidebarProps {
 }
 
 function AppDesktopSidebar({ pathname, user }: AppDesktopSidebarProps) {
+  const sectionLabels = {
+    communication: "Коммуникация",
+    organization: "Организация"
+  } as const
+
+  const sections = Object.entries(sectionLabels) as [keyof typeof sectionLabels, string][]
+
   return (
     <Sidebar variant="inset" className="border-r bg-background">
       <SidebarHeader className="gap-4 border-b p-4">
@@ -123,35 +135,44 @@ function AppDesktopSidebar({ pathname, user }: AppDesktopSidebarProps) {
           <SidebarTrigger className="md:hidden" aria-label="Открыть меню" />
         </div>
       </SidebarHeader>
-      <SidebarContent className="px-2">
-        <SidebarGroup>
-          <SidebarGroupLabel>Навигация</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {APP_NAVIGATION.map((item) => {
-                const isActive = pathname.startsWith(item.href)
-                return (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={isActive}>
-                      <Link href={item.href} className="flex items-center gap-3">
-                        <item.icon className="size-4" aria-hidden />
-                        <span className="flex-1 truncate">{item.title}</span>
-                        <Kbd className="hidden text-xs font-normal text-muted-foreground lg:flex">
-                          ⌘{item.shortcut}
-                        </Kbd>
-                      </Link>
-                    </SidebarMenuButton>
-                    {item.status ? (
-                      <SidebarMenuBadge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-100">
-                        {item.status === "beta" ? "Beta" : "New"}
-                      </SidebarMenuBadge>
-                    ) : null}
-                  </SidebarMenuItem>
-                )
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+      <SidebarContent className="space-y-4 px-2 py-3">
+        {sections.map(([section, label]) => {
+          const items = APP_NAVIGATION.filter((item) => item.section === section)
+          if (!items.length) {
+            return null
+          }
+
+          return (
+            <SidebarGroup key={section}>
+              <SidebarGroupLabel>{label}</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {items.map((item) => {
+                    const isActive = pathname.startsWith(item.href)
+                    return (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton asChild isActive={isActive}>
+                          <Link href={item.href} className="flex items-center gap-3">
+                            <item.icon className="size-4" aria-hidden />
+                            <span className="flex-1 truncate">{item.title}</span>
+                            <Kbd className="hidden text-xs font-normal text-muted-foreground lg:flex">
+                              ⌘{item.shortcut}
+                            </Kbd>
+                          </Link>
+                        </SidebarMenuButton>
+                        {item.status ? (
+                          <SidebarMenuBadge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-100">
+                            {item.status === "beta" ? "Beta" : "New"}
+                          </SidebarMenuBadge>
+                        ) : null}
+                      </SidebarMenuItem>
+                    )
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )
+        })}
       </SidebarContent>
       <SidebarFooter className="mt-auto gap-3 border-t p-4">
         <Button variant="secondary" className="w-full gap-2" disabled>
@@ -199,10 +220,16 @@ function AppTopBar({ user, onOpenSearch }: AppTopBarProps) {
               readOnly
             />
           </div>
-          <Button className="gap-2 shadow-sm" variant="default" disabled>
-            <CalendarPlusIcon className="size-4" aria-hidden />
-            Начать звонок
-          </Button>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <Button className="gap-2 shadow-sm" variant="outline" disabled>
+              <MessageSquarePlusIcon className="size-4" aria-hidden />
+              Создать чат
+            </Button>
+            <Button className="gap-2 shadow-sm" variant="default" disabled>
+              <CalendarPlusIcon className="size-4" aria-hidden />
+              Запланировать звонок
+            </Button>
+          </div>
           <Avatar className="size-9 border">
             <AvatarFallback>{user?.username?.slice(0, 2).toUpperCase() ?? "??"}</AvatarFallback>
           </Avatar>
@@ -220,7 +247,7 @@ function AppMobileNav({ pathname }: AppMobileNavProps) {
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 px-2 py-2 shadow-xl backdrop-blur md:hidden">
       <div className="grid grid-cols-3 gap-2">
-        {APP_NAVIGATION.filter((item) => ["/app/friends", "/app/chats", "/app/calls", "/app/search"].includes(item.href)).map((item) => {
+        {APP_NAVIGATION.filter((item) => item.pinned).map((item) => {
           const isActive = pathname.startsWith(item.href)
           return (
             <Link

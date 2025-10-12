@@ -8,12 +8,16 @@ import {
   Users2Icon
 } from "lucide-react"
 
+export type AppNavigationSection = "communication" | "organization"
+
 export interface AppNavigationItem {
   title: string
   description: string
   href: string
   icon: LucideIcon
   shortcut: string
+  section: AppNavigationSection
+  pinned?: boolean
   status?: "beta" | "new"
 }
 
@@ -23,14 +27,18 @@ export const APP_NAVIGATION: AppNavigationItem[] = [
     description: "Управление контактами и приглашениями",
     href: "/app/friends",
     icon: Users2Icon,
-    shortcut: "P"
+    shortcut: "P",
+    section: "communication",
+    pinned: true
   },
   {
     title: "Чаты",
     description: "Личные и групповые переписки",
     href: "/app/chats",
     icon: MessageCircleIcon,
-    shortcut: "M"
+    shortcut: "M",
+    section: "communication",
+    pinned: true
   },
   {
     title: "Звонки",
@@ -38,6 +46,8 @@ export const APP_NAVIGATION: AppNavigationItem[] = [
     href: "/app/calls",
     icon: PhoneCallIcon,
     shortcut: "V",
+    section: "communication",
+    pinned: true,
     status: "beta"
   },
   {
@@ -45,20 +55,24 @@ export const APP_NAVIGATION: AppNavigationItem[] = [
     description: "Уведомления и события в реальном времени",
     href: "/app/inbox",
     icon: BellRingIcon,
-    shortcut: "E"
+    shortcut: "E",
+    section: "organization"
   },
   {
     title: "Поиск",
     description: "Глобальный поиск по пользователям и контенту",
     href: "/app/search",
     icon: SearchIcon,
-    shortcut: "S"
+    shortcut: "S",
+    section: "organization",
+    pinned: true
   },
   {
     title: "Настройки",
     description: "Профиль, устройства и конфиденциальность",
     href: "/app/settings",
     icon: SettingsIcon,
-    shortcut: "A"
+    shortcut: "A",
+    section: "organization"
   }
 ]
