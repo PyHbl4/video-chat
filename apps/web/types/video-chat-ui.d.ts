@@ -17,7 +17,9 @@ declare module "@video-chat/ui" {
   export const AlertDialogTitle: any
   export const AlertDialogTrigger: any
   export const AlertTitle: any
+  export const Badge: any
   export const Button: any
+  export type ButtonProps = any
   export const buttonVariants: any
   export const ButtonGroup: any
   export const ButtonGroupItem: any

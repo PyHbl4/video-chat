@@ -1,9 +1,23 @@
 import type { LucideIcon } from "lucide-react"
 
-import { Button, type ButtonProps, Card, CardContent } from "@video-chat/ui"
+import { Button, Card, CardContent } from "@video-chat/ui"
 
-export interface EmptyStateAction extends ButtonProps {
+type ButtonLikeProps = Record<string, unknown>
+
+export interface EmptyStateAction extends Partial<ButtonLikeProps> {
   label: string
+  disabled?: boolean
+}
+
+function splitAction(
+  action: EmptyStateAction | null
+): { label: string; props: ButtonLikeProps } | null {
+  if (!action) {
+    return null
+  }
+
+  const { label, ...rest } = action
+  return { label, props: rest }
 }
 
 export interface EmptyStateProps {
@@ -21,6 +35,9 @@ export function EmptyState({
   action,
   secondaryAction
 }: EmptyStateProps) {
+  const primaryAction = splitAction(action ?? null)
+  const secondary = splitAction(secondaryAction ?? null)
+
   return (
     <Card className="h-full min-h-[320px] border-dashed text-center shadow-none">
       <CardContent className="flex h-full flex-col items-center justify-center gap-4 p-10">
@@ -31,14 +48,14 @@ export function EmptyState({
           <h2 className="text-lg font-medium">{title}</h2>
           <p className="text-sm text-muted-foreground">{description}</p>
         </div>
-        {(action || secondaryAction) && (
+        {(primaryAction || secondary) && (
           <div className="flex flex-col gap-2 sm:flex-row">
-            {action ? (
-              <Button {...action}>{action.label}</Button>
+            {primaryAction ? (
+              <Button {...primaryAction.props}>{primaryAction.label}</Button>
             ) : null}
-            {secondaryAction ? (
-              <Button variant="outline" {...secondaryAction}>
-                {secondaryAction.label}
+            {secondary ? (
+              <Button variant="outline" {...secondary.props}>
+                {secondary.label}
               </Button>
             ) : null}
           </div>

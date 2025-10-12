@@ -1,5 +1,6 @@
+"use client"
 
-import { useState } from "react"
+import { useState, type ChangeEvent } from "react"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Tabs, TabsContent, TabsList, TabsTrigger } from "@video-chat/ui"
 import { FilesIcon, SearchIcon, UsersIcon } from "lucide-react"
@@ -43,7 +44,7 @@ export default function SearchPage() {
                 <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
                 <Input
                   value={query}
-                  onChange={(event) => setQuery(event.target.value)}
+                  onChange={(event: ChangeEvent<HTMLInputElement>) => setQuery(event.target.value)}
                   placeholder="Например, @username или room:daily-sync"
                   className="pl-9"
                 />
