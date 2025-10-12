@@ -6,6 +6,8 @@ import { Button } from "@video-chat/ui"
 import { LaptopIcon, MoonIcon, SunIcon } from "lucide-react"
 import { useTheme } from "next-themes"
 
+import { useUserPreferences } from "@/components/providers/user-preferences-provider"
+
 const THEME_ORDER = ["system", "light", "dark"] as const
 
 type ThemeMode = (typeof THEME_ORDER)[number]
@@ -23,7 +25,8 @@ const LABELS: Record<ThemeMode, string> = {
 }
 
 export function ThemeToggle() {
-  const { theme, setTheme, resolvedTheme } = useTheme()
+  const { resolvedTheme } = useTheme()
+  const { preferences, updatePreferences, isLoading } = useUserPreferences()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -35,12 +38,8 @@ export function ThemeToggle() {
       return "system"
     }
 
-    if (theme === "system") {
-      return "system"
-    }
-
-    return (theme as ThemeMode) ?? "system"
-  }, [mounted, theme])
+    return (preferences.theme.mode as ThemeMode) ?? "system"
+  }, [mounted, preferences.theme.mode])
 
   const displayMode: ThemeMode = useMemo(() => {
     if (!mounted) {
@@ -59,7 +58,7 @@ export function ThemeToggle() {
   const handleToggle = () => {
     const currentIndex = THEME_ORDER.indexOf(currentMode)
     const nextMode = THEME_ORDER[(currentIndex + 1) % THEME_ORDER.length]
-    setTheme(nextMode)
+    updatePreferences({ theme: { mode: nextMode } })
   }
 
   return (
@@ -70,6 +69,7 @@ export function ThemeToggle() {
       onClick={handleToggle}
       className="w-full justify-start gap-2 text-left font-medium"
       aria-label={`Переключить тему. Сейчас: ${LABELS[currentMode]}`}
+      disabled={isLoading}
     >
       <Icon className="size-4" aria-hidden />
       <span>{mounted ? LABELS[currentMode] : "Тема"}</span>

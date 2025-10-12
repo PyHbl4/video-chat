@@ -124,6 +124,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/users/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get user preferences
+         * @description Retrieve persisted UI and experience settings for the authenticated user.
+         */
+        get: operations["getUserPreferences"];
+        /**
+         * Update user preferences
+         * @description Merge and persist updated preference values for the authenticated user.
+         */
+        put: operations["updateUserPreferences"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/friends/request": {
         parameters: {
             query?: never;
@@ -478,6 +502,95 @@ export interface components {
             timestamp: string;
             detail?: string | null;
         };
+        ThemePreferences: {
+            /**
+             * @description Preferred visual theme mode.
+             * @default system
+             * @enum {string}
+             */
+            mode: "system" | "light" | "dark";
+        };
+        ThemePreferencesUpdate: {
+            /** @enum {string} */
+            mode?: "system" | "light" | "dark";
+        };
+        SidebarPreferences: {
+            /**
+             * @description Collapse the navigation sidebar on desktop layouts.
+             * @default false
+             */
+            collapsed: boolean;
+        };
+        SidebarPreferencesUpdate: {
+            collapsed?: boolean;
+        };
+        AudioPreferences: {
+            /**
+             * @description Join calls with the microphone muted by default.
+             * @default false
+             */
+            muteMicrophoneOnJoin: boolean;
+        };
+        AudioPreferencesUpdate: {
+            muteMicrophoneOnJoin?: boolean;
+        };
+        VideoPreferences: {
+            /**
+             * @description Enable the camera automatically when joining a room.
+             * @default true
+             */
+            startWithCamera: boolean;
+            /**
+             * @description Mirror the self preview feed.
+             * @default true
+             */
+            mirrorVideo: boolean;
+        };
+        VideoPreferencesUpdate: {
+            startWithCamera?: boolean;
+            mirrorVideo?: boolean;
+        };
+        NotificationPreferences: {
+            /**
+             * @description Play audio cues for calls and important events.
+             * @default true
+             */
+            playSounds: boolean;
+            /**
+             * @description Display toast notifications inside the web client.
+             * @default true
+             */
+            showToasts: boolean;
+        };
+        NotificationPreferencesUpdate: {
+            playSounds?: boolean;
+            showToasts?: boolean;
+        };
+        UserPreferences: {
+            theme: components["schemas"]["ThemePreferences"];
+            sidebar: components["schemas"]["SidebarPreferences"];
+            audio: components["schemas"]["AudioPreferences"];
+            video: components["schemas"]["VideoPreferences"];
+            notifications: components["schemas"]["NotificationPreferences"];
+            /**
+             * Format: date-time
+             * @description ISO-8601 timestamp of the last update.
+             */
+            updatedAt: string;
+        };
+        /** @description Partial update payload for user preferences. */
+        UserPreferencesUpdate: {
+            /**
+             * Format: date-time
+             * @description Timestamp of the client snapshot that is being merged.
+             */
+            updatedAt?: string;
+            theme?: components["schemas"]["ThemePreferencesUpdate"];
+            sidebar?: components["schemas"]["SidebarPreferencesUpdate"];
+            audio?: components["schemas"]["AudioPreferencesUpdate"];
+            video?: components["schemas"]["VideoPreferencesUpdate"];
+            notifications?: components["schemas"]["NotificationPreferencesUpdate"];
+        };
         Error: {
             /** @example validation_error */
             error: string;
@@ -720,6 +833,68 @@ export interface operations {
             };
             /** @description Query too short or parameters invalid. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getUserPreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current preferences payload. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserPreferences"];
+                };
+            };
+            /** @description Authentication required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateUserPreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserPreferencesUpdate"];
+            };
+        };
+        responses: {
+            /** @description Updated preferences payload. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserPreferences"];
+                };
+            };
+            /** @description Authentication required. */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

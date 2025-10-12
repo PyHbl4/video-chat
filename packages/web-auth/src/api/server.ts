@@ -1,4 +1,10 @@
-import { ApiClient, createAuthApi } from "@video-chat/contracts"
+import {
+  ApiClient,
+  createAuthApi,
+  createUsersApi,
+  type UserPreferences,
+  type UserPreferencesUpdate
+} from "@video-chat/contracts"
 import { cookies, headers } from "next/headers"
 
 import { CSRF_COOKIE_NAME, env } from "../env"
@@ -44,4 +50,23 @@ export function createServerApiClient() {
 export function createServerAuthApi() {
   const client = createServerApiClient()
   return createAuthApi(client)
+}
+
+export function createServerUsersApi() {
+  const client = createServerApiClient()
+  return createUsersApi(client)
+}
+
+export async function getPreferences(): Promise<UserPreferences> {
+  const api = createServerUsersApi()
+  const { data } = await api.getPreferences()
+  return data
+}
+
+export async function updatePreferences(
+  body: UserPreferencesUpdate
+): Promise<UserPreferences> {
+  const api = createServerUsersApi()
+  const { data } = await api.updatePreferences(body)
+  return data
 }

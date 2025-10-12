@@ -16,6 +16,11 @@ from .friends import (
     FriendStatus,
     FriendUser,
 )
+from .preferences import (
+    UserPreferencesPayload,
+    UserPreferencesRead,
+    UserPreferencesUpdate,
+)
 from .users import UserSearchItem, UserSearchResponse
 
 __all__ = [
@@ -35,4 +40,7 @@ __all__ = [
     "FriendRequestPayload",
     "FriendDecisionPayload",
     "ListFriendsResponse",
+    "UserPreferencesPayload",
+    "UserPreferencesRead",
+    "UserPreferencesUpdate",
 ]

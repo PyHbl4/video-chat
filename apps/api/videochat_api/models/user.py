@@ -25,7 +25,14 @@ class User(Base):
     sessions: Mapped[list["AuthSession"]] = relationship(
         "AuthSession", back_populates="user", cascade="all, delete-orphan"
     )
+    preferences: Mapped["UserPreferences"] = relationship(
+        "UserPreferences",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
 
 
 from .device import Device  # noqa: E402
 from .session import AuthSession  # noqa: E402
+from .preferences import UserPreferences  # noqa: E402

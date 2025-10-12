@@ -22,7 +22,6 @@ import {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarProvider,
   SidebarRail,
   SidebarTrigger,
   cn
@@ -37,6 +36,8 @@ import { MAIN_NAV } from "@/components/app/navigation"
 import { ThemeToggle } from "@/components/app/theme-toggle"
 import { LogoutButton } from "@/components/auth/logout-button"
 import { useUIStore } from "@/stores/ui-store"
+import { BrandHeader } from "./brand-header"
+import { UserPreferencesProvider } from "../providers/user-preferences-provider"
 
 export interface AppShellProps {
   user: SessionSnapshot["user"]
@@ -135,7 +136,7 @@ export function AppShell({ user, children }: AppShellProps) {
 
   return (
     <AppUserProvider user={user}>
-      <SidebarProvider>
+      <UserPreferencesProvider>
         <div className="relative flex min-h-screen w-full bg-muted/10">
           <AppSidebar pathname={pathname} user={user} getBadgeValue={getBadgeValue} />
           <SidebarInset className="flex flex-1 flex-col">
@@ -156,7 +157,7 @@ export function AppShell({ user, children }: AppShellProps) {
             </div>
           </SidebarInset>
         </div>
-      </SidebarProvider>
+      </UserPreferencesProvider>
     </AppUserProvider>
   )
 }
@@ -176,12 +177,7 @@ function AppSidebar({ pathname, user, getBadgeValue }: AppSidebarProps) {
     >
       <SidebarHeader className="border-b px-4 py-4">
         <div className="flex items-center justify-between gap-2">
-          <div className="space-y-1">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              ownSpace
-            </p>
-            <p className="text-sm font-semibold leading-tight">Self-Hosted Video Chat</p>
-          </div>
+          <BrandHeader className="max-w-[220px]" logoSize={34} />
           <SidebarTrigger className="md:hidden" aria-label="Открыть меню" />
         </div>
       </SidebarHeader>
@@ -266,18 +262,31 @@ function AppTopBar({ user, currentNav, pathname, getBadgeValue, onOpenSearch }: 
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-start gap-3 md:items-center">
             <SidebarTrigger className="md:hidden" aria-label="Открыть меню" />
-            <div>
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                Раздел
-              </p>
-              <h2 className="text-lg font-semibold leading-tight">
-                {currentNav?.label ?? "Приложение"}
-              </h2>
-              {currentNav?.description ? (
-                <p className="hidden text-sm text-muted-foreground sm:block">
-                  {currentNav.description}
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <BrandHeader
+                  className="hidden md:inline-flex text-sm"
+                  compact
+                  showTagline={false}
+                  logoSize={26}
+                />
+                <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary md:hidden">
+                  ownSpace
+                </span>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Раздел
                 </p>
-              ) : null}
+                <h2 className="text-lg font-semibold leading-tight">
+                  {currentNav?.label ?? "Приложение"}
+                </h2>
+                {currentNav?.description ? (
+                  <p className="hidden text-sm text-muted-foreground sm:block">
+                    {currentNav.description}
+                  </p>
+                ) : null}
+              </div>
             </div>
           </div>
           <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
