@@ -8,71 +8,77 @@ import {
   Users2Icon
 } from "lucide-react"
 
-export type AppNavigationSection = "communication" | "organization"
+export type MainRoute = "friends" | "chats" | "calls" | "inbox" | "search" | "settings"
 
-export interface AppNavigationItem {
-  title: string
+export type NavBadgeKey = "inboxCount" | "missedCalls"
+
+export interface MainNavItem {
+  key: MainRoute
+  label: string
   description: string
   href: string
   icon: LucideIcon
   shortcut: string
-  section: AppNavigationSection
-  pinned?: boolean
+  badgeKey?: NavBadgeKey
   status?: "beta" | "new"
+  mobile?: boolean
 }
 
-export const APP_NAVIGATION: AppNavigationItem[] = [
+export const MAIN_NAV: MainNavItem[] = [
   {
-    title: "Друзья",
+    key: "friends",
+    label: "Друзья",
     description: "Управление контактами и приглашениями",
     href: "/app/friends",
     icon: Users2Icon,
-    shortcut: "P",
-    section: "communication",
-    pinned: true
+    shortcut: "F",
+    mobile: true
   },
   {
-    title: "Чаты",
+    key: "chats",
+    label: "Чаты",
     description: "Личные и групповые переписки",
     href: "/app/chats",
     icon: MessageCircleIcon,
-    shortcut: "M",
-    section: "communication",
-    pinned: true
+    shortcut: "C",
+    mobile: true
   },
   {
-    title: "Звонки",
+    key: "calls",
+    label: "Звонки",
     description: "История и запланированные созвоны",
     href: "/app/calls",
     icon: PhoneCallIcon,
-    shortcut: "V",
-    section: "communication",
-    pinned: true,
-    status: "beta"
+    shortcut: "L",
+    badgeKey: "missedCalls",
+    status: "beta",
+    mobile: true
   },
   {
-    title: "Входящие",
+    key: "inbox",
+    label: "Входящие",
     description: "Уведомления и события в реальном времени",
     href: "/app/inbox",
     icon: BellRingIcon,
-    shortcut: "E",
-    section: "organization"
+    shortcut: "I",
+    badgeKey: "inboxCount",
+    mobile: true
   },
   {
-    title: "Поиск",
+    key: "search",
+    label: "Поиск",
     description: "Глобальный поиск по пользователям и контенту",
     href: "/app/search",
     icon: SearchIcon,
-    shortcut: "S",
-    section: "organization",
-    pinned: true
+    shortcut: "K"
   },
   {
-    title: "Настройки",
+    key: "settings",
+    label: "Настройки",
     description: "Профиль, устройства и конфиденциальность",
     href: "/app/settings",
     icon: SettingsIcon,
-    shortcut: "A",
-    section: "organization"
+    shortcut: "S",
+    mobile: true
   }
 ]
