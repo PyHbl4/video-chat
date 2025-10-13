@@ -14,7 +14,8 @@ services:
       POSTGRES_PASSWORD: video
       POSTGRES_DB: videochat
     ports:
-      - "5432:5432"
+      - "5433:5432"
+    # - "5432:5432" Изменить позже
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
@@ -29,7 +30,8 @@ services:
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "no"]
     ports:
-      - "6379:6379"
+      - "6380:6379"
+    # - "6379:6379" Изменить позже
     volumes:
       - redis-data:/data
     healthcheck:
@@ -52,7 +54,8 @@ services:
       <<: *default-environment
       PYTHONUNBUFFERED: "1"
     ports:
-      - "8000:8000"
+    # - "8000:8000" Изменить позже
+      - "8080:8080"
     depends_on:
       db:
         condition: service_healthy
