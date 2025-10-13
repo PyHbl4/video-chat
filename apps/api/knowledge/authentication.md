@@ -1,0 +1,9 @@
+# Аутентификация и сессии
+- **Регистрация**: `/auth/register` принимает username/email/password, проверяет уникальность и хеширует пароль через `hash_password`. 【F:apps/api/videochat_api/api/endpoints/auth.py†L31-L75】
+- **Вход**: `/auth/login` поддерживает две ветки:
+  - Web: создаёт запись `AuthSession` c `SessionKind.WEB`, генерирует cookie + CSRF и выставляет их в ответе. 【F:apps/api/videochat_api/api/endpoints/auth.py†L130-L170】【F:apps/api/videochat_api/auth/session.py†L74-L126】
+  - Device: использует `DeviceInfo`, создаёт/обновляет запись `Device`, выдаёт JWT access + refresh токены и device identifier. 【F:apps/api/videochat_api/api/endpoints/auth.py†L139-L170】【F:apps/api/videochat_api/auth/session.py†L128-L182】
+- **Rate limiting**: перед логином обращается к `RateLimiter`. При сбое Redis включается `NullRateLimiter`. 【F:apps/api/videochat_api/api/endpoints/auth.py†L88-L117】【F:apps/api/videochat_api/dependencies.py†L25-L44】
+- **Refresh**: `/auth/refresh` ищет сессию по хешу refresh-токена, проверяет устройство и блокировки пользователя, затем вызывает `rotate_refresh_token`. 【F:apps/api/videochat_api/api/endpoints/auth.py†L173-L214】【F:apps/api/videochat_api/auth/session.py†L184-L211】
+- **Выход**: `/auth/logout` валидирует CSRF (для web) или refresh (для устройств) и помечает сессию отозванной. Cookie удаляется. 【F:apps/api/videochat_api/api/endpoints/auth.py†L217-L259】
+- **Текущий пользователь**: зависимость `get_current_user` извлекает токен из заголовка или cookie, проверяет ревокацию и блокировку пользователя, обновляет `last_seen`. 【F:apps/api/videochat_api/dependencies.py†L47-L97】

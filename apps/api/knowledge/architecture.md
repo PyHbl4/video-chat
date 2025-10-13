@@ -1,0 +1,7 @@
+# Архитектура сервиса
+- **Входная точка**: `videochat_api/main.py` создаёт FastAPI-приложение, подключает CORS, регистрирует роутеры и оборачивает их в Socket.IO ASGI-слой. Лайфспан открывает AsyncEngine и Redis-клиент, а также инициализирует `PresenceService`. 【F:apps/api/videochat_api/main.py†L17-L52】
+- **Роутинг**: `api/routes.py` объединяет системные, auth, user и friends эндпоинты. Каждая группа живёт в отдельном модуле внутри `api/endpoints`. 【F:apps/api/videochat_api/api/routes.py†L1-L13】
+- **Конфигурация**: `config.py` использует `BaseSettings` для переменных окружения и предоставляет свойства для async-URL и CSRF. 【F:apps/api/videochat_api/config.py†L6-L44】
+- **Доступ к данным**: `db/session.py` лениво создаёт AsyncEngine/SessionMaker на базе `DATABASE_URL` и экспонирует генератор `get_db_session`. 【F:apps/api/videochat_api/db/session.py†L1-L39】
+- **Модели**: ORM-слой разбит на `user`, `device`, `session`, `friend`, каждая таблица описывает связи и Enum-столбцы для статусов и типов устройств/сессий. 【F:apps/api/videochat_api/models/user.py†L1-L26】【F:apps/api/videochat_api/models/device.py†L1-L43】【F:apps/api/videochat_api/models/session.py†L1-L41】【F:apps/api/videochat_api/models/friend.py†L1-L44】
+- **Сервисы**: в `services/` расположена бизнес-логика (friendships, presence, rate limiter), используемая эндпоинтами и сокетом. 【F:apps/api/videochat_api/services/friendships.py†L1-L73】【F:apps/api/videochat_api/services/presence.py†L1-L94】【F:apps/api/videochat_api/services/rate_limiter.py†L1-L52】

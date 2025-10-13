@@ -1,0 +1,10 @@
+# Дружба и уведомления
+- **Модель**: `FriendRelationship` хранит пару `requester/addressee`, Enum-статус (`pending/accepted/declined/blocked`) и временные метки создания/ответа. Уникальность пары гарантируется `UniqueConstraint`. 【F:apps/api/videochat_api/models/friend.py†L1-L44】
+- **Сервисы**: `services/friendships.py` предоставляет выборку списков, поиск взаимной заявки и получение идентификаторов друзей, что используется в REST и Socket.IO. 【F:apps/api/videochat_api/services/friendships.py†L1-L73】
+- **REST-потоки**:
+  - `GET /friends` — возвращает список с optional фильтром по статусу. 【F:apps/api/videochat_api/api/endpoints/friends.py†L61-L92】
+  - `POST /friends/request` — создаёт новую заявку или возвращает существующую, предотвращая дубликаты и уведомляя адресата. 【F:apps/api/videochat_api/api/endpoints/friends.py†L95-L157】
+  - `POST /friends/accept` — разрешено только адресату; обновляет статус и шлёт уведомление обеим сторонам. 【F:apps/api/videochat_api/api/endpoints/friends.py†L160-L199】
+  - `POST /friends/decline` — меняет статус на `declined` и уведомляет отправителя. 【F:apps/api/videochat_api/api/endpoints/friends.py†L202-L223】
+- **WebSocket**: при подключении пользователя грузятся идентификаторы друзей в статусе `accepted`, чтобы обновлять их присутствие. 【F:apps/api/videochat_api/websocket/server.py†L97-L112】
+- **Тесты**: сценарии дружбы extensively покрыты unit-тестами с monkeypatch для Socket.IO (`test_friends.py`). 【F:apps/api/tests/test_friends.py†L1-L129】
