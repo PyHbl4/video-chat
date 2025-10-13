@@ -1,0 +1,8 @@
+# Присутствие и Socket.IO
+- **PresenceService**: хранит статусы в Redis с TTL (по умолчанию 120 секунд), умеет выставлять online/offline, продлевать TTL и массово читать статусы. Использует сериализацию в JSON и ISO8601 даты. 【F:apps/api/videochat_api/services/presence.py†L1-L94】
+- **Socket.IO сервер**: создаётся в `websocket/server.py`, делит подключённых пользователей по комнатам вида `user:{id}` и обновляет presence.
+  1. Авторизует соединение по JWT access токену или паре cookie + CSRF, используя `SessionService` и БД. 【F:apps/api/videochat_api/websocket/server.py†L53-L115】
+  2. При первом соединении помечает пользователя online, рассылает событие `presence:update` друзьям и отправляет снапшот состояний новому клиенту. 【F:apps/api/videochat_api/websocket/server.py†L117-L177】
+  3. Периодически обновляет TTL через фоновые таски `_schedule_presence_refresh`, пока есть активные соединения. 【F:apps/api/videochat_api/websocket/server.py†L147-L177】
+  4. На отключении снимает подписки, отменяет таск и публикует offline, если это был последний клиент. 【F:apps/api/videochat_api/websocket/server.py†L189-L218】
+- **Интеграция с REST**: состояния presence используются дружескими событиями (accept/decline/request), которые эмитятся через `sio.emit` в соответствующие комнаты. 【F:apps/api/videochat_api/api/endpoints/friends.py†L33-L66】【F:apps/api/videochat_api/api/endpoints/friends.py†L109-L205】
