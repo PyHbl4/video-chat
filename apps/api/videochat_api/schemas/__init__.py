@@ -16,6 +16,16 @@ from .friends import (
     FriendStatus,
     FriendUser,
 )
+from .room import (
+    Room,
+    RoomCreatePayload,
+    RoomCreateResponse,
+    RoomParticipant,
+    RoomParticipantRole,
+    RoomSignalMessage,
+    RoomStatus,
+    RoomStatusResponse,
+)
 from .users import UserSearchItem, UserSearchResponse
 
 __all__ = [
@@ -35,4 +45,12 @@ __all__ = [
     "FriendRequestPayload",
     "FriendDecisionPayload",
     "ListFriendsResponse",
+    "Room",
+    "RoomParticipant",
+    "RoomParticipantRole",
+    "RoomStatus",
+    "RoomCreatePayload",
+    "RoomCreateResponse",
+    "RoomStatusResponse",
+    "RoomSignalMessage",
 ]

@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import uuid
 from collections import defaultdict
 from dataclasses import dataclass
 from http.cookies import SimpleCookie
@@ -10,14 +11,21 @@ from typing import Any, Iterable
 
 import socketio
 from fastapi import FastAPI
+from redis.asyncio import Redis
 
 from videochat_api.auth.session import session_manager
 from videochat_api.config import settings
 from videochat_api.db.session import get_sessionmaker
-from videochat_api.models import AuthSession, User
+from videochat_api.models import AuthSession, Room as RoomModel, User
 from videochat_api.models.friend import FriendStatus as FriendModelStatus
 from videochat_api.services.friendships import get_friend_user_ids
 from videochat_api.services.presence import PresenceService, PresenceState
+from videochat_api.services.rooms import (
+    RoomConflictError,
+    RoomForbiddenError,
+    RoomNotFoundError,
+    RoomService,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -132,6 +140,13 @@ def _get_presence_service(scope: dict[str, Any]) -> PresenceService | None:
     return getattr(app.state, "presence_service", None) if app is not None else None
 
 
+def _get_redis_client(scope: dict[str, Any]) -> Redis | None:
+    app = scope.get("app") if scope else None
+    if app is None:
+        app = _fastapi_app
+    return getattr(app.state, "redis", None) if app is not None else None
+
+
 def _schedule_presence_refresh(user_id: int, presence_service: PresenceService) -> None:
     if user_id in _presence_refresh_tasks:
         return
@@ -159,6 +174,26 @@ def _schedule_presence_refresh(user_id: int, presence_service: PresenceService) 
             _presence_refresh_tasks.pop(user_id, None)
 
     _presence_refresh_tasks[user_id] = asyncio.create_task(_keepalive())
+
+
+def _serialize_room(room: RoomModel) -> dict[str, Any]:
+    return {
+        "id": str(room.id),
+        "status": room.status.value,
+        "initiatorId": str(room.initiator_id),
+        "createdAt": room.created_at.isoformat() if room.created_at else None,
+        "updatedAt": room.updated_at.isoformat() if room.updated_at else None,
+        "closedAt": room.closed_at.isoformat() if room.closed_at else None,
+        "participants": [
+            {
+                "userId": str(participant.user_id),
+                "role": participant.role.value,
+                "joinedAt": participant.joined_at.isoformat(),
+                "leftAt": participant.left_at.isoformat() if participant.left_at else None,
+            }
+            for participant in sorted(room.participants, key=lambda item: item.joined_at)
+        ],
+    }
 
 
 @sio.event
@@ -226,3 +261,149 @@ async def disconnect(sid: str) -> None:
     _sid_to_user.pop(sid, None)
 
     logger.info("Socket disconnected", extra={"sid": sid, "user_id": user_id})
+
+
+class RoomNamespace(socketio.AsyncNamespace):
+    def __init__(self, namespace: str = "/rooms") -> None:
+        super().__init__(namespace)
+
+    async def on_connect(self, sid: str, environ: dict[str, Any], auth: dict[str, Any] | None) -> None:
+        scope: dict[str, Any] = environ.get("asgi.scope", {})
+        if not auth or "roomId" not in auth:
+            raise ConnectionRefusedError("Room ID is required")
+
+        try:
+            room_uuid = uuid.UUID(str(auth.get("roomId")))
+        except ValueError:
+            raise ConnectionRefusedError("Invalid room identifier")
+
+        try:
+            socket_user, _ = await _resolve_socket_user(auth, scope)
+        except ConnectionRefusedError:
+            logger.warning("Room namespace auth refused", extra={"sid": sid})
+            raise
+
+        redis = _get_redis_client(scope)
+        sessionmaker = get_sessionmaker()
+        async with sessionmaker() as db:
+            user = await db.get(User, socket_user.id)
+            if user is None or user.is_blocked:
+                raise ConnectionRefusedError("User not available")
+
+            service = RoomService(db, redis)
+            try:
+                room, joined = await service.join_room(room_uuid, user)
+            except RoomNotFoundError:
+                raise ConnectionRefusedError("Room not found")
+            except RoomForbiddenError:
+                raise ConnectionRefusedError("Access denied")
+            except RoomConflictError as exc:
+                raise ConnectionRefusedError(str(exc))
+
+            room_payload = _serialize_room(room)
+
+        await self.save_session(sid, {"user_id": socket_user.id, "room_id": str(room_uuid)})
+        await self.enter_room(sid, f"video-room:{room_uuid}")
+
+        await self.emit("room:state", {"room": room_payload}, room=sid)
+
+        if joined:
+            await self.emit(
+                "room:user_joined",
+                {"room": room_payload, "userId": str(socket_user.id)},
+                room=f"video-room:{room_uuid}",
+                skip_sid=sid,
+            )
+
+        logger.info(
+            "Room socket connected",
+            extra={"sid": sid, "user_id": socket_user.id, "room_id": str(room_uuid)},
+        )
+
+    async def on_disconnect(self, sid: str) -> None:
+        session = await self.get_session(sid)
+        if not session:
+            return
+
+        room_id = session.get("room_id")
+        user_id = session.get("user_id")
+
+        await self.leave_room(sid, f"video-room:{room_id}")
+
+        try:
+            room_uuid = uuid.UUID(str(room_id)) if room_id else None
+            user_id_int = int(user_id) if user_id is not None else None
+        except (TypeError, ValueError):
+            return
+
+        if room_uuid is None or user_id_int is None:
+            return
+
+        redis = _get_redis_client({})
+        sessionmaker = get_sessionmaker()
+        async with sessionmaker() as db:
+            user = await db.get(User, user_id_int)
+            if user is None:
+                return
+
+            service = RoomService(db, redis)
+            try:
+                result = await service.leave_room(room_uuid, user)
+            except (RoomNotFoundError, RoomForbiddenError):
+                return
+
+            room_payload = _serialize_room(result.room)
+
+        if result.changed:
+            await self.emit(
+                "room:user_left",
+                {"room": room_payload, "userId": str(user_id_int)},
+                room=f"video-room:{room_id}",
+                skip_sid=sid,
+            )
+
+        logger.info(
+            "Room socket disconnected",
+            extra={"sid": sid, "user_id": user_id_int, "room_id": room_id},
+        )
+
+    async def on_signal(self, sid: str, data: dict[str, Any]) -> None:
+        if not isinstance(data, dict):
+            return
+
+        session = await self.get_session(sid)
+        if not session:
+            return
+
+        room_id = session.get("room_id")
+        user_id = session.get("user_id")
+        signal_type = data.get("type")
+        if not room_id or user_id is None or not signal_type:
+            return
+
+        payload = {
+            "type": signal_type,
+            "data": data.get("data"),
+            "fromUserId": str(user_id),
+        }
+        await self.emit("room:signal", payload, room=f"video-room:{room_id}", skip_sid=sid)
+
+    async def on_message(self, sid: str, data: Any) -> None:  # noqa: D401 - socket.io event handler
+        session = await self.get_session(sid)
+        if not session:
+            return
+
+        room_id = session.get("room_id")
+        user_id = session.get("user_id")
+        if not room_id or user_id is None:
+            return
+
+        await self.emit(
+            "room:message",
+            {"message": data, "userId": str(user_id)},
+            room=f"video-room:{room_id}",
+            skip_sid=sid,
+        )
+
+
+sio.register_namespace(RoomNamespace("/rooms"))
