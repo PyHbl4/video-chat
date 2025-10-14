@@ -7,11 +7,14 @@ from typing import AsyncGenerator, Awaitable, Callable
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
+
+pytest_plugins = ("pytest_asyncio_plugin",)
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
 from videochat_api.api.endpoints import auth as auth_endpoints
 from videochat_api.api.endpoints import friends as friends_endpoints
+from videochat_api.api.endpoints import rooms as rooms_endpoints
 from videochat_api.api.endpoints import users as users_endpoints
 from videochat_api.auth.passwords import hash_password
 from videochat_api.config import settings
@@ -54,7 +57,7 @@ class _AllowAllLimiter:
 
 class _FakeRedis:
     def __init__(self) -> None:
-        self._store: dict[str, str] = {}
+        self._store: dict[str, object] = {}
 
     async def set(self, key: str, value: str, ex: int | None = None) -> None:  # noqa: ARG002
         self._store[key] = value
@@ -71,6 +74,19 @@ class _FakeRedis:
     async def expire(self, key: str, ttl: int) -> None:  # noqa: ARG002
         return None
 
+    async def sadd(self, key: str, *values: str) -> None:
+        current = self._store.get(key)
+        if not isinstance(current, set):
+            current = set()
+        current.update(values)
+        self._store[key] = current
+
+    async def smembers(self, key: str) -> set[str]:
+        members = self._store.get(key)
+        if isinstance(members, set):
+            return set(members)
+        return set()
+
     async def aclose(self) -> None:
         self._store.clear()
 
@@ -81,6 +97,7 @@ async def app(sessionmaker: async_sessionmaker[AsyncSession]) -> FastAPI:
     app.include_router(auth_endpoints.router)
     app.include_router(users_endpoints.router)
     app.include_router(friends_endpoints.router)
+    app.include_router(rooms_endpoints.router)
 
     async def override_session_dependency() -> AsyncGenerator[AsyncSession, None]:
         async with sessionmaker() as session:

@@ -11,6 +11,7 @@ The Video Chat API is an asynchronous FastAPI service that powers authentication
 - **User discovery** via authenticated search filtering blocked accounts and enforcing minimum query length. 【F:apps/api/videochat_api/api/endpoints/users.py†L12-L56】
 - **Presence broadcasting** that stores online state in Redis, keeps TTL refreshed, and multicasts updates to friends over Socket.IO. 【F:apps/api/videochat_api/services/presence.py†L1-L94】【F:apps/api/videochat_api/websocket/server.py†L1-L210】
 - **Login rate limiting** implemented with Redis and a permissive fallback when Redis is unavailable. 【F:apps/api/videochat_api/services/rate_limiter.py†L1-L52】【F:apps/api/videochat_api/dependencies.py†L21-L44】
+- **Two-party video rooms** with persistent records, Redis-backed caching, REST management, and dedicated Socket.IO namespace for signaling. 【F:apps/api/videochat_api/models/room.py†L1-L82】【F:apps/api/videochat_api/services/rooms.py†L1-L220】【F:apps/api/videochat_api/api/endpoints/rooms.py†L1-L164】【F:apps/api/videochat_api/websocket/server.py†L1-L360】
 
 ## Project Structure
 ```
@@ -89,6 +90,9 @@ Alembic migration scripts live under `alembic/versions`. The current baseline cr
 | `POST` | `/friends/accept` | Accept an incoming request and notify both users. 【F:apps/api/videochat_api/api/endpoints/friends.py†L160-L199】 |
 | `POST` | `/friends/decline` | Decline a pending request and notify requester. 【F:apps/api/videochat_api/api/endpoints/friends.py†L202-L223】 |
 | `GET` | `/users/search` | Search for other users by username prefix. 【F:apps/api/videochat_api/api/endpoints/users.py†L16-L55】 |
+| `POST` | `/rooms` | Create a waiting video room for a friend and emit an invite. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L49-L108】 |
+| `GET` | `/rooms/{room_id}` | Fetch current room status for participants. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L111-L134】 |
+| `POST` | `/rooms/{room_id}/leave` | Leave the room and notify the remaining participant. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L137-L164】 |
 
 All non-system routes require authentication supplied either by the web session cookie or a `Bearer` JWT access token. Dependency wiring handles session resolution and automatic revocation for blocked users. 【F:apps/api/videochat_api/dependencies.py†L47-L97】
 
@@ -99,6 +103,15 @@ The Socket.IO server shares the FastAPI lifecycle and accepts either JWT access 
 3. Streams current presence snapshots and refreshes TTLs while the socket remains open. 【F:apps/api/videochat_api/websocket/server.py†L120-L177】
 
 Disconnecting clears the presence state (after the final client leaves) and cancels the refresh loop. 【F:apps/api/videochat_api/websocket/server.py†L189-L218】
+
+### Room namespace
+
+The `/rooms` Socket.IO namespace handles WebRTC signaling and chat messages between two room participants:
+
+1. The connecting client supplies the `roomId` and authenticates via JWT or cookie + CSRF. 【F:apps/api/videochat_api/websocket/server.py†L229-L292】
+2. `RoomService` verifies membership, persists joins, and keeps Redis caches in sync. 【F:apps/api/videochat_api/services/rooms.py†L63-L152】
+3. Signals (`type` + payload) are relayed to the peer via `room:signal`, while text chat uses `room:message`. 【F:apps/api/videochat_api/websocket/server.py†L316-L342】
+4. Disconnects automatically call the leave workflow and broadcast `room:user_left`. 【F:apps/api/videochat_api/websocket/server.py†L294-L314】
 
 ## Security Considerations
 - Web sessions use signed, HTTP-only cookies paired with CSRF tokens for logout and friend mutations. 【F:apps/api/videochat_api/api/endpoints/auth.py†L130-L169】【F:apps/api/videochat_api/dependencies.py†L72-L97】
