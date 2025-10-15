@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import AliasChoices, BaseModel, EmailStr, Field
 
 
 class RegisterRequest(BaseModel):
@@ -52,13 +52,16 @@ class LogoutRequest(BaseModel):
     refresh_token: str | None = Field(default=None, min_length=16, max_length=512)
     device_id: str | None = Field(default=None, max_length=128)
 
-
+      
 class UserResponse(BaseModel):
     id: int
     username: str
     email: EmailStr
     is_blocked: bool
-    is_admin: bool = Field(alias="isAdmin", serialization_alias="isAdmin")
+    is_admin: bool = Field(
+        validation_alias=AliasChoices("is_admin", "isAdmin"),
+        serialization_alias="isAdmin",
+    )
 
     class Config:
         from_attributes = True
