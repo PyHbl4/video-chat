@@ -160,9 +160,19 @@ class RoomService:
 
     async def get_room_for_user(self, room_id: uuid.UUID, user_id: int) -> Room:
         room = await self._get_room(room_id)
-        if self._find_participant(room, user_id) is None:
-            raise RoomForbiddenError("Нет доступа к комнате")
-        return room
+        if self._find_participant(room, user_id) is not None:
+            return room
+
+        if user_id == room.initiator_id:
+            return room
+
+        friend_ids = await get_friend_user_ids(
+            self._db, room.initiator_id, status=FriendModelStatus.ACCEPTED
+        )
+        if user_id in friend_ids:
+            return room
+
+        raise RoomForbiddenError("Нет доступа к комнате")
 
     async def _ensure_user_is_free(self, user_id: int) -> None:
         stmt = (

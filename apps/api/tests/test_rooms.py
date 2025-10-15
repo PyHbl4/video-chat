@@ -66,7 +66,7 @@ async def test_create_room_invites_friend(
 
 
 @pytest.mark.asyncio
-async def test_room_status_requires_membership(
+async def test_room_status_available_for_invited_friend(
     client: AsyncClient,
     user_factory,
     sessionmaker: async_sessionmaker[AsyncSession],
@@ -84,6 +84,30 @@ async def test_room_status_requires_membership(
     assert status_response.json()["room"]["status"] == "waiting"
 
     await _login(client, "bob")
+    invited_response = await client.get(f"/rooms/{room_id}")
+    assert invited_response.status_code == 200
+    invited_payload = invited_response.json()["room"]
+    assert invited_payload["status"] == "waiting"
+    participant_ids = [participant["userId"] for participant in invited_payload["participants"]]
+    assert str(alice.id) in participant_ids
+
+
+@pytest.mark.asyncio
+async def test_room_status_forbidden_for_non_friend(
+    client: AsyncClient,
+    user_factory,
+    sessionmaker: async_sessionmaker[AsyncSession],
+) -> None:
+    alice = await user_factory("alice", "alice@example.com", "Password123!")
+    bob = await user_factory("bob", "bob@example.com", "Password123!")
+    eve = await user_factory("eve", "eve@example.com", "Password123!")
+
+    await _befriend(sessionmaker, alice.id, bob.id)
+    await _login(client, "alice")
+    create_response = await client.post("/rooms", json={"targetUserId": str(bob.id)})
+    room_id = create_response.json()["room"]["id"]
+
+    await _login(client, "eve")
     forbidden = await client.get(f"/rooms/{room_id}")
     assert forbidden.status_code == 403
 
