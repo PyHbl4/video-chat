@@ -29,7 +29,10 @@ async def test_web_login_cookie_flow(
 
     me_response = await client.get("/auth/me")
     assert me_response.status_code == 200
-    assert me_response.json()["username"] == "webuser"
+    me_payload = me_response.json()
+    assert me_payload["username"] == "webuser"
+    assert me_payload["isAdmin"] is False
+    assert "is_admin" not in me_payload
 
     logout_response = await client.post(
         "/auth/logout",
@@ -74,7 +77,10 @@ async def test_refresh_rotation_and_logout(client, user_factory) -> None:
         headers={"Authorization": f"Bearer {access_token}"},
     )
     assert me_response.status_code == 200
-    assert me_response.json()["username"] == "desktop"
+    me_payload = me_response.json()
+    assert me_payload["username"] == "desktop"
+    assert me_payload["isAdmin"] is False
+    assert "is_admin" not in me_payload
 
     refresh_payload = {"refresh_token": refresh_token, "device_id": device_id}
     refresh_response = await client.post("/auth/refresh", json=refresh_payload)
@@ -93,6 +99,10 @@ async def test_refresh_rotation_and_logout(client, user_factory) -> None:
         headers={"Authorization": f"Bearer {new_access}"},
     )
     assert me_with_new_access.status_code == 200
+    me_new_payload = me_with_new_access.json()
+    assert me_new_payload["username"] == "desktop"
+    assert me_new_payload["isAdmin"] is False
+    assert "is_admin" not in me_new_payload
 
     logout_response = await client.post(
         "/auth/logout",
