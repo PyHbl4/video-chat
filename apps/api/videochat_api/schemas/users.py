@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class UserSearchItem(BaseModel):
@@ -18,3 +18,49 @@ class UserSearchItem(BaseModel):
 
 class UserSearchResponse(BaseModel):
     items: list[UserSearchItem]
+
+
+class UserDevice(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: str
+    identifier: str
+    kind: str
+    display_name: str | None = Field(default=None, alias="displayName", serialization_alias="displayName")
+    user_agent: str | None = Field(default=None, alias="userAgent", serialization_alias="userAgent")
+    last_seen_at: datetime | None = Field(default=None, alias="lastSeenAt", serialization_alias="lastSeenAt")
+    created_at: datetime = Field(alias="createdAt", serialization_alias="createdAt")
+    updated_at: datetime = Field(alias="updatedAt", serialization_alias="updatedAt")
+    revoked_at: datetime | None = Field(default=None, alias="revokedAt", serialization_alias="revokedAt")
+
+
+class UserSession(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: str
+    kind: str
+    device_id: str | None = Field(default=None, alias="deviceId", serialization_alias="deviceId")
+    expires_at: datetime | None = Field(default=None, alias="expiresAt", serialization_alias="expiresAt")
+    last_seen_at: datetime | None = Field(default=None, alias="lastSeenAt", serialization_alias="lastSeenAt")
+    created_at: datetime = Field(alias="createdAt", serialization_alias="createdAt")
+    revoked_at: datetime | None = Field(default=None, alias="revokedAt", serialization_alias="revokedAt")
+    ip_address: str | None = Field(default=None, alias="ipAddress", serialization_alias="ipAddress")
+    user_agent: str | None = Field(default=None, alias="userAgent", serialization_alias="userAgent")
+
+
+class UserListItem(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: str
+    username: str
+    email: EmailStr
+    is_blocked: bool = Field(alias="isBlocked", serialization_alias="isBlocked")
+    is_admin: bool = Field(alias="isAdmin", serialization_alias="isAdmin")
+    created_at: datetime = Field(alias="createdAt", serialization_alias="createdAt")
+    updated_at: datetime = Field(alias="updatedAt", serialization_alias="updatedAt")
+    devices: list[UserDevice] | None = None
+    sessions: list[UserSession] | None = None
+
+
+class UserListResponse(BaseModel):
+    users: list[UserListItem]

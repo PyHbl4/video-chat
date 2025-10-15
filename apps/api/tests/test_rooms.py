@@ -1,5 +1,5 @@
-import uuid
 from datetime import datetime, timezone
+import uuid
 
 import pytest
 from httpx import AsyncClient
@@ -144,6 +144,46 @@ async def test_room_status_forbidden_for_pending_friend(
 
 
 @pytest.mark.asyncio
+async def test_get_my_room_returns_current_room(
+    client: AsyncClient,
+    user_factory,
+    sessionmaker: async_sessionmaker[AsyncSession],
+) -> None:
+    alice = await user_factory("alice", "alice@example.com", "Password123!")
+    bob = await user_factory("bob", "bob@example.com", "Password123!")
+
+    await _create_friendship(sessionmaker, alice.id, bob.id)
+    await _login(client, "alice")
+
+    create_response = await client.post("/rooms", json={"targetUserId": str(bob.id)})
+    assert create_response.status_code == 201
+    room_id = create_response.json()["room"]["id"]
+
+    my_room = await client.get("/rooms/me")
+    assert my_room.status_code == 200
+    assert my_room.json()["room"]["id"] == room_id
+
+
+@pytest.mark.asyncio
+async def test_get_my_room_returns_404_when_user_has_no_room(
+    client: AsyncClient,
+    user_factory,
+    sessionmaker: async_sessionmaker[AsyncSession],
+) -> None:
+    alice = await user_factory("alice", "alice@example.com", "Password123!")
+    bob = await user_factory("bob", "bob@example.com", "Password123!")
+    charlie = await user_factory("charlie", "charlie@example.com", "Password123!")
+
+    await _create_friendship(sessionmaker, alice.id, bob.id)
+    await _login(client, "alice")
+    await client.post("/rooms", json={"targetUserId": str(bob.id)})
+
+    await _login(client, "charlie")
+    response = await client.get("/rooms/me")
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
 async def test_leave_room_moves_to_ending(
     client: AsyncClient,
     app: FastAPI,
@@ -189,3 +229,64 @@ async def test_leave_room_moves_to_ending(
     assert event == "room:user_left"
     assert room == f"video-room:{room_id}"
     assert payload["userId"] == str(bob.id)
+
+
+@pytest.mark.asyncio
+async def test_list_rooms_requires_admin(
+    client: AsyncClient,
+    user_factory,
+    sessionmaker: async_sessionmaker[AsyncSession],
+) -> None:
+    alice = await user_factory("alice", "alice@example.com", "Password123!")
+    bob = await user_factory("bob", "bob@example.com", "Password123!")
+
+    await _create_friendship(sessionmaker, alice.id, bob.id)
+
+    await _login(client, "alice")
+    await client.post("/rooms", json={"targetUserId": str(bob.id)})
+
+    response = await client.get("/rooms")
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_list_rooms_returns_active_rooms_for_admin(
+    client: AsyncClient,
+    app: FastAPI,
+    user_factory,
+    sessionmaker: async_sessionmaker[AsyncSession],
+) -> None:
+    admin = await user_factory("admin", "admin@example.com", "Password123!", is_admin=True)
+    alice = await user_factory("alice", "alice@example.com", "Password123!")
+    bob = await user_factory("bob", "bob@example.com", "Password123!")
+    carol = await user_factory("carol", "carol@example.com", "Password123!")
+    dave = await user_factory("dave", "dave@example.com", "Password123!")
+
+    await _create_friendship(sessionmaker, alice.id, bob.id)
+    await _create_friendship(sessionmaker, carol.id, dave.id)
+
+    await _login(client, "alice")
+    waiting_response = await client.post("/rooms", json={"targetUserId": str(bob.id)})
+    assert waiting_response.status_code == 201
+
+    await _login(client, "carol")
+    active_response = await client.post("/rooms", json={"targetUserId": str(dave.id)})
+    assert active_response.status_code == 201
+    active_room_id = active_response.json()["room"]["id"]
+
+    async with sessionmaker() as session:
+        service = RoomService(session, app.state.redis)
+        room_uuid = uuid.UUID(active_room_id)
+        dave_model = await session.get(User, dave.id)
+        assert dave_model is not None
+        await service.join_room(room_uuid, dave_model)
+
+    await _login(client, "admin")
+    response = await client.get("/rooms")
+    assert response.status_code == 200
+
+    payload = response.json()["rooms"]
+    statuses = {room["status"] for room in payload}
+    assert statuses == {"waiting", "active"}
+    returned_ids = {room["id"] for room in payload}
+    assert active_room_id in returned_ids

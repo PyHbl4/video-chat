@@ -58,6 +58,7 @@ class UserResponse(BaseModel):
     username: str
     email: EmailStr
     is_blocked: bool
+    is_admin: bool = Field(alias="isAdmin", serialization_alias="isAdmin")
 
     class Config:
         from_attributes = True
