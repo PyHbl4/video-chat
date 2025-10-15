@@ -120,12 +120,15 @@ async def client(app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
 
 
 @pytest.fixture
-def user_factory(sessionmaker: async_sessionmaker[AsyncSession]) -> Callable[[str, str, str, bool], Awaitable[User]]:
+def user_factory(
+    sessionmaker: async_sessionmaker[AsyncSession],
+) -> Callable[[str, str, str, bool, bool], Awaitable[User]]:
     async def _create_user(
         username: str,
         email: str,
         password: str,
         is_blocked: bool = False,
+        is_admin: bool = False,
     ) -> User:
         async with sessionmaker() as session:
             now = datetime.now(timezone.utc)
@@ -134,6 +137,7 @@ def user_factory(sessionmaker: async_sessionmaker[AsyncSession]) -> Callable[[st
                 email=email,
                 password_hash=hash_password(password),
                 is_blocked=is_blocked,
+                is_admin=is_admin,
                 created_at=now,
                 updated_at=now,
             )

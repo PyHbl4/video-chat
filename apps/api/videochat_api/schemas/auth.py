@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import AliasChoices, BaseModel, EmailStr, Field
 
 
 class RegisterRequest(BaseModel):
@@ -58,6 +58,10 @@ class UserResponse(BaseModel):
     username: str
     email: EmailStr
     is_blocked: bool
+    is_admin: bool = Field(
+        validation_alias=AliasChoices("is_admin", "isAdmin"),
+        serialization_alias="isAdmin",
+    )
 
     class Config:
         from_attributes = True

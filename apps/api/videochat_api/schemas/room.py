@@ -56,3 +56,7 @@ class RoomStatusResponse(BaseModel):
 class RoomSignalMessage(BaseModel):
     type: str
     data: Any = None
+
+
+class RoomsListResponse(BaseModel):
+    rooms: list[Room]
