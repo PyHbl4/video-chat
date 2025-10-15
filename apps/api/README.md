@@ -11,7 +11,7 @@ Video Chat API — асинхронное FastAPI-приложение, отве
 - **Парольная аутентификация**: поддерживаются веб-сессии (cookie + CSRF) и сессии устройств (JWT + refresh). 【F:apps/api/videochat_api/api/endpoints/auth.py†L31-L259】【F:apps/api/videochat_api/auth/session.py†L36-L211】
 - **Система дружбы**: запрос, принятие, отклонение и оповещения друзей через REST и Socket.IO. 【F:apps/api/videochat_api/api/endpoints/friends.py†L19-L223】
 - **Поиск пользователей**: безопасный поиск по префиксу имени с фильтрацией заблокированных аккаунтов. 【F:apps/api/videochat_api/api/endpoints/users.py†L91-L132】
-- **Управление видеокомнатами**: создание, просмотр статуса, выход, запрос текущей комнаты пользователя и админский список активных/ожидающих комнат. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L41-L152】
+- **Управление видеокомнатами**: создание, ручное присоединение через `POST /rooms/{room_id}/join`, просмотр статуса, выход, запрос текущей комнаты пользователя и админский список активных/ожидающих комнат. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L41-L198】
 - **Администрирование**: пользователи с флагом `is_admin` могут получать расширенный список пользователей (включая устройства и сессии) и контролировать комнаты. 【F:apps/api/videochat_api/models/user.py†L15-L24】【F:apps/api/videochat_api/api/endpoints/users.py†L27-L88】
 - **Rate limiting и presence**: Redis хранит лимиты логина и статусы онлайн, деградируя в безопасный режим при недоступности. 【F:apps/api/videochat_api/dependencies.py†L19-L43】【F:apps/api/videochat_api/services/presence.py†L16-L94】
 
@@ -84,12 +84,14 @@ pytest
 
 1. **Подготовьте окружение.** Активируйте виртуальное окружение, установите dev-зависимости (`pip install -e .[dev]`). Это добавит `httpx`, `pytest`, `aiosqlite` и другие инструменты для локального запуска. 【F:apps/api/pyproject.toml†L31-L49】
 2. **Запустите автотесты.** `pytest` создаёт временную БД, подменяет Redis и гоняет ключевые сценарии.
-3. **Ручная проверка комнат.** После запуска `uvicorn` откройте `http://localhost:8000/docs`:
-   - Зарегистрируйте двух пользователей через `POST /auth/register`, затем войдите (`POST /auth/login`).
-   - Создайте дружбу (`POST /friends/request` → `POST /friends/accept`).
-   - Создайте комнату (`POST /rooms`) и получите статус (`GET /rooms/{room_id}` или `GET /rooms/me`).
-   - Авторизуйтесь админом и вызовите `GET /rooms`, чтобы увидеть все активные и ожидающие комнаты.
-   - Проверьте Socket.IO-namespace `/rooms` для сигналинга (`room:signal`, `room:user_left`). 【F:apps/api/videochat_api/websocket/server.py†L229-L342】
+3. **Ручная проверка комнат.** После запуска `uvicorn` откройте Swagger UI `http://localhost:8000/docs` и выполните последовательность:
+   1. **Создание тестовой пары.** Зарегистрируйте двух пользователей (`POST /auth/register`) и авторизуйте их по очереди (`POST /auth/login`). Убедитесь, что в ответе присутствуют cookie и CSRF-токен для веб-сессии.
+   2. **Установление дружбы.** Пользователь A отправляет заявку (`POST /friends/request`), пользователь B принимает её (`POST /friends/accept`). Проверяйте, что событие дружбы появляется в Socket.IO-комнатах `user:{id}` (можно отследить через подключённого клиента или логи тестового socket.io-клиента). 【F:apps/api/videochat_api/api/endpoints/friends.py†L33-L205】
+   3. **Создание комнаты.** Пользователь A вызывает `POST /rooms` с `target_user_id` равным идентификатору пользователя B. В ответе получите `room.id` и статус `waiting`. Сразу после этого в комнату `user:{target}` прилетает событие `room:invited` через Socket.IO. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L82-L118】
+   4. **Подтверждение участия.** Под пользователем B выполните `POST /rooms/{room_id}/join`. Если запрос успешен, статус комнаты переключится на `active`, а в пространство `video-room:{room_id}` и личные комнаты участников отправится событие `room:user_joined`. Для надёжности повторите запрос — второй вызов должен вернуть `changed=false` (в теле `room` статус не меняется), что подтверждает идемпотентность. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L152-L198】
+   5. **Проверка просмотра статуса.** Пользователь A или B могут запросить `GET /rooms/{room_id}` и увидеть актуальный список участников. Посторонний пользователь получит `403 Forbidden`. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L120-L150】
+   6. **Закрытие сеанса.** Завершите проверку вызовом `POST /rooms/{room_id}/leave` от каждого участника. После выхода последнего пользователя статус перейдёт в `closed`, а событие `room:user_left` будет разослано подключённым клиентам. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L131-L198】
+   7. **Админский обзор.** Авторизуйтесь под администратором и запросите `GET /rooms`, чтобы убедиться, что закрытые комнаты не отображаются в списке активных, а ожидающие (если кто-то не присоединился) видны с правильным статусом. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L59-L79】
 
 ## Схема базы данных и миграции
 

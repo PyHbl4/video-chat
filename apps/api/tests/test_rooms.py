@@ -232,6 +232,61 @@ async def test_leave_room_moves_to_ending(
 
 
 @pytest.mark.asyncio
+async def test_join_room_activates_and_is_idempotent(
+    client: AsyncClient,
+    user_factory,
+    sessionmaker: async_sessionmaker[AsyncSession],
+    monkeypatch,
+) -> None:
+    alice = await user_factory("alice", "alice@example.com", "Password123!")
+    bob = await user_factory("bob", "bob@example.com", "Password123!")
+
+    await _create_friendship(sessionmaker, alice.id, bob.id)
+
+    await _login(client, "alice")
+    create_response = await client.post("/rooms", json={"targetUserId": str(bob.id)})
+    assert create_response.status_code == 201
+    room_id = create_response.json()["room"]["id"]
+
+    emitted: list[tuple[str, dict, str | None]] = []
+
+    async def fake_emit(event: str, payload: dict, room: str | None = None, **_: object) -> None:
+        emitted.append((event, payload, room))
+
+    monkeypatch.setattr("videochat_api.api.endpoints.rooms.sio.emit", fake_emit)
+
+    await _login(client, "bob")
+
+    join_response = await client.post(f"/rooms/{room_id}/join")
+    assert join_response.status_code == 200
+
+    join_payload = join_response.json()["room"]
+    assert join_payload["status"] == "active"
+    participant_ids = {participant["userId"] for participant in join_payload["participants"]}
+    assert participant_ids == {str(alice.id), str(bob.id)}
+
+    joined_events = [event for event in emitted if event[0] == "room:user_joined"]
+    assert joined_events, "ожидалось уведомление о присоединении"
+    assert any(
+        room == f"video-room:{room_id}" and payload["userId"] == str(bob.id)
+        for _, payload, room in joined_events
+    )
+    assert any(
+        room == f"user:{alice.id}" and payload["userId"] == str(bob.id)
+        for _, payload, room in joined_events
+    )
+
+    emitted_count = len(joined_events)
+
+    second_join = await client.post(f"/rooms/{room_id}/join")
+    assert second_join.status_code == 200
+    assert second_join.json()["room"]["status"] == "active"
+
+    joined_events_after = [event for event in emitted if event[0] == "room:user_joined"]
+    assert len(joined_events_after) == emitted_count
+
+
+@pytest.mark.asyncio
 async def test_list_rooms_requires_admin(
     client: AsyncClient,
     user_factory,

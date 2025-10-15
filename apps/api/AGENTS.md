@@ -17,6 +17,13 @@
 
 ## Особенности и предупреждения
 - Все маршруты, кроме `/healthz`, требуют активной сессии. Для web-клиентов необходимо прокидывать CSRF-заголовок при logout и действиях с дружбой. 【F:apps/api/videochat_api/api/endpoints/auth.py†L217-L259】【F:apps/api/videochat_api/dependencies.py†L72-L97】
-- Ротация refresh-токенов обязательна: повторное использование старого токена приводит к 401 и блокировке сессии. 【F:apps/api/videochat_api/api/endpoints/auth.py†L201-L214】
-- Redis используется сразу в нескольких сценариях (rate limiting, presence). При недоступности стоит ожидать повышенные нагрузки и отсутствие статуса онлайн. 【F:apps/api/videochat_api/dependencies.py†L25-L44】【F:apps/api/videochat_api/services/presence.py†L16-L94】
-- При изменении моделей не забудьте обновить миграции и синхронизировать Pydantic-схемы. 【F:apps/api/videochat_api/models/user.py†L1-L34】【F:apps/api/videochat_api/schemas/__init__.py†L1-L24】
+- Ротация refresh-токенов обязательна: повторное использование старого токена приводит к 401 и блокировке сессии. 【F:apps/api/videochat_api/api/endpoints/auth.py†L173-L214】
+- Redis используется сразу в нескольких сценариях (rate limiting, presence, кеш комнат). При недоступности стоит ожидать повышенные нагрузки, отсутствие статуса онлайн и деградацию `RoomService` до работы только через БД. 【F:apps/api/videochat_api/dependencies.py†L25-L44】【F:apps/api/videochat_api/services/presence.py†L16-L94】【F:apps/api/videochat_api/services/rooms.py†L44-L107】
+- При изменении моделей не забудьте обновить миграции и синхронизировать Pydantic-схемы. 【F:apps/api/videochat_api/models/user.py†L1-L34】【F:apps/api/videochat_api/models/room.py†L1-L82】【F:apps/api/videochat_api/schemas/__init__.py†L1-L34】
+
+## Памятка по ручной проверке комнат
+1. Создайте двоих пользователей и установите дружбу через REST (`POST /friends/request`, затем `POST /friends/accept`). Без дружбы `RoomService.create_room` вернёт `RoomForbiddenError`. 【F:apps/api/videochat_api/services/rooms.py†L145-L191】
+2. Пользователь-инициатор вызывает `POST /rooms` и получает объект комнаты в статусе `waiting`. Одновременно событие `room:invited` отправляется адресату через Socket.IO. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L82-L118】
+3. При подтверждении участия второй пользователь делает `POST /rooms/{room_id}/join`. Первый успешный вызов переводит комнату в `active`, эмитит `room:user_joined` в пространства `video-room:{id}` и `user:{id}` участников. Повторный вызов должен вернуть тот же статус без сайд-эффектов (идемпотентность). 【F:apps/api/videochat_api/api/endpoints/rooms.py†L152-L198】
+4. Проверяйте `GET /rooms/{room_id}` от обеих сторон, чтобы убедиться, что список участников синхронен. Любой третий пользователь увидит `403 Forbidden`. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L120-L150】
+5. Закрывайте комнату через `POST /rooms/{room_id}/leave`. После выхода последнего участника комната получает статус `closed`, а событие `room:user_left` доставляется всем подписчикам. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L131-L198】
