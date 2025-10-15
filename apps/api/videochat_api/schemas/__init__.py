@@ -25,8 +25,16 @@ from .room import (
     RoomSignalMessage,
     RoomStatus,
     RoomStatusResponse,
+    RoomsListResponse,
 )
-from .users import UserSearchItem, UserSearchResponse
+from .users import (
+    UserDevice,
+    UserListItem,
+    UserListResponse,
+    UserSearchItem,
+    UserSearchResponse,
+    UserSession,
+)
 
 __all__ = [
     "RegisterRequest",
@@ -39,6 +47,10 @@ __all__ = [
     "UserResponse",
     "UserSearchItem",
     "UserSearchResponse",
+    "UserListItem",
+    "UserListResponse",
+    "UserDevice",
+    "UserSession",
     "Friend",
     "FriendUser",
     "FriendStatus",
@@ -52,5 +64,6 @@ __all__ = [
     "RoomCreatePayload",
     "RoomCreateResponse",
     "RoomStatusResponse",
+    "RoomsListResponse",
     "RoomSignalMessage",
 ]

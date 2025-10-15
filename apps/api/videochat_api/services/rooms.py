@@ -174,6 +174,34 @@ class RoomService:
 
         raise RoomForbiddenError("Нет доступа к комнате")
 
+    async def get_current_room_for_user(self, user_id: int) -> Room:
+        stmt: Select[tuple[Room]] = (
+            select(Room)
+            .join(RoomParticipant)
+            .options(selectinload(Room.participants))
+            .where(RoomParticipant.user_id == user_id)
+            .where(RoomParticipant.left_at.is_(None))
+            .where(Room.status.in_(self.ACTIVE_STATUSES))
+            .order_by(Room.created_at.desc())
+            .limit(1)
+        )
+        result = await self._db.execute(stmt)
+        room = result.scalars().unique().first()
+        if room is None:
+            raise RoomNotFoundError("Активная комната не найдена")
+        return room
+
+    async def list_active_rooms(self) -> list[Room]:
+        stmt: Select[tuple[Room]] = (
+            select(Room)
+            .options(selectinload(Room.participants))
+            .where(Room.status.in_(self.ACTIVE_STATUSES))
+            .order_by(Room.created_at.desc())
+        )
+        result = await self._db.execute(stmt)
+        rooms = result.scalars().unique().all()
+        return rooms
+
     async def _ensure_user_is_free(self, user_id: int) -> None:
         stmt = (
             select(Room)

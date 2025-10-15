@@ -7,6 +7,7 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from videochat_api.dependencies import (
+    get_current_admin_user,
     get_current_user,
     get_redis,
     get_session_dependency,
@@ -20,6 +21,7 @@ from videochat_api.schemas import (
     RoomParticipantRole as RoomParticipantRoleSchema,
     RoomStatus as RoomStatusSchema,
     RoomStatusResponse,
+    RoomsListResponse,
 )
 from videochat_api.services.rooms import (
     LeaveResult,
@@ -58,6 +60,17 @@ def _build_service(db: AsyncSession, redis: Redis | None) -> RoomService:
     return RoomService(db=db, redis=redis)
 
 
+@router.get("/", response_model=RoomsListResponse)
+async def list_active_rooms(
+    db: AsyncSession = Depends(get_session_dependency),
+    redis: Redis | None = Depends(get_redis),
+    _: User = Depends(get_current_admin_user),
+) -> RoomsListResponse:
+    service = _build_service(db, redis)
+    rooms = await service.list_active_rooms()
+    return RoomsListResponse(rooms=[_model_to_schema(room) for room in rooms])
+
+
 @router.post("/", response_model=RoomCreateResponse, status_code=status.HTTP_201_CREATED)
 async def create_room(
     payload: RoomCreatePayload,
@@ -94,6 +107,21 @@ async def create_room(
     )
 
     return RoomCreateResponse(room=room_schema)
+
+
+@router.get("/me", response_model=RoomStatusResponse)
+async def get_my_room(
+    db: AsyncSession = Depends(get_session_dependency),
+    redis: Redis | None = Depends(get_redis),
+    current_user: User = Depends(get_current_user),
+) -> RoomStatusResponse:
+    service = _build_service(db, redis)
+    try:
+        room = await service.get_current_room_for_user(current_user.id)
+    except RoomNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    return RoomStatusResponse(room=_model_to_schema(room))
 
 
 @router.get("/{room_id}", response_model=RoomStatusResponse)

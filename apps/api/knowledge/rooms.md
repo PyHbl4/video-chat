@@ -93,7 +93,7 @@
 
 ## Реализовано на текущий момент
 - **Доменные объекты**: `Room` и `RoomParticipant` описывают жизненный цикл видеокомнат, а Alembic-миграция `20241005_000004` создаёт необходимые таблицы и enum-типы. 【F:apps/api/videochat_api/models/room.py†L1-L82】【F:apps/api/alembic/versions/20241005_000004_create_rooms_tables.py†L1-L85】
-- **Сервисный слой**: `RoomService` управляет созданием комнат, присоединением участников, выходом, а также кэшем в Redis и проверками на дружбу/заполненность. 【F:apps/api/videochat_api/services/rooms.py†L1-L220】
-- **REST API**: эндпоинты `/rooms` реализуют создание, просмотр и выход с серверными уведомлениями через Socket.IO. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L1-L164】
+- **Сервисный слой**: `RoomService` управляет созданием комнат, присоединением участников, выходом, кэшем в Redis, а также предоставляет выборки текущей комнаты пользователя и списка активных комнат для админов. 【F:apps/api/videochat_api/services/rooms.py†L1-L220】
+- **REST API**: эндпоинты `/rooms` покрывают создание, просмотр конкретной комнаты, получение собственной комнаты (`GET /rooms/me`), админский список (`GET /rooms`) и выход с уведомлениями через Socket.IO. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L1-L170】
 - **WebSocket**: namespace `/rooms` авторизует клиентов, передаёт signaling-сообщения и автоматически инициирует выход при разрыве соединения. 【F:apps/api/videochat_api/websocket/server.py†L229-L342】
-- **Тесты и документация**: добавлены pytest-сценарии для ключевых сценариев комнат и обновлена README/knowledge-база. 【F:apps/api/tests/test_rooms.py†L1-L142】【F:apps/api/README.md†L10-L123】
+- **Тесты и документация**: добавлены pytest-сценарии на новый функционал комнат и обновлена README/knowledge-база. 【F:apps/api/tests/test_rooms.py†L1-L214】【F:apps/api/README.md†L1-L175】
