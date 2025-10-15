@@ -15,14 +15,18 @@ async def _login(client: AsyncClient, identifier: str, password: str = "Password
     assert response.status_code == 200
 
 
-async def _befriend(
-    sessionmaker: async_sessionmaker[AsyncSession], requester_id: int, addressee_id: int
+async def _create_friendship(
+    sessionmaker: async_sessionmaker[AsyncSession],
+    requester_id: int,
+    addressee_id: int,
+    *,
+    status: FriendModelStatus = FriendModelStatus.ACCEPTED,
 ) -> None:
     async with sessionmaker() as session:
         friendship = FriendRelationship(
             requester_id=requester_id,
             addressee_id=addressee_id,
-            status=FriendModelStatus.ACCEPTED,
+            status=status,
             created_at=datetime.now(timezone.utc),
         )
         session.add(friendship)
@@ -39,7 +43,7 @@ async def test_create_room_invites_friend(
     alice = await user_factory("alice", "alice@example.com", "Password123!")
     bob = await user_factory("bob", "bob@example.com", "Password123!")
 
-    await _befriend(sessionmaker, alice.id, bob.id)
+    await _create_friendship(sessionmaker, alice.id, bob.id)
 
     await _login(client, "alice")
 
@@ -74,7 +78,7 @@ async def test_room_status_available_for_invited_friend(
     alice = await user_factory("alice", "alice@example.com", "Password123!")
     bob = await user_factory("bob", "bob@example.com", "Password123!")
 
-    await _befriend(sessionmaker, alice.id, bob.id)
+    await _create_friendship(sessionmaker, alice.id, bob.id)
     await _login(client, "alice")
     create_response = await client.post("/rooms", json={"targetUserId": str(bob.id)})
     room_id = create_response.json()["room"]["id"]
@@ -102,12 +106,39 @@ async def test_room_status_forbidden_for_non_friend(
     bob = await user_factory("bob", "bob@example.com", "Password123!")
     eve = await user_factory("eve", "eve@example.com", "Password123!")
 
-    await _befriend(sessionmaker, alice.id, bob.id)
+    await _create_friendship(sessionmaker, alice.id, bob.id)
     await _login(client, "alice")
     create_response = await client.post("/rooms", json={"targetUserId": str(bob.id)})
     room_id = create_response.json()["room"]["id"]
 
     await _login(client, "eve")
+    forbidden = await client.get(f"/rooms/{room_id}")
+    assert forbidden.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_room_status_forbidden_for_pending_friend(
+    client: AsyncClient,
+    user_factory,
+    sessionmaker: async_sessionmaker[AsyncSession],
+) -> None:
+    alice = await user_factory("alice", "alice@example.com", "Password123!")
+    bob = await user_factory("bob", "bob@example.com", "Password123!")
+    charlie = await user_factory("charlie", "charlie@example.com", "Password123!")
+
+    await _create_friendship(sessionmaker, alice.id, bob.id)
+    await _create_friendship(
+        sessionmaker,
+        requester_id=charlie.id,
+        addressee_id=alice.id,
+        status=FriendModelStatus.PENDING,
+    )
+
+    await _login(client, "alice")
+    create_response = await client.post("/rooms", json={"targetUserId": str(bob.id)})
+    room_id = create_response.json()["room"]["id"]
+
+    await _login(client, "charlie")
     forbidden = await client.get(f"/rooms/{room_id}")
     assert forbidden.status_code == 403
 
@@ -123,7 +154,7 @@ async def test_leave_room_moves_to_ending(
     alice = await user_factory("alice", "alice@example.com", "Password123!")
     bob = await user_factory("bob", "bob@example.com", "Password123!")
 
-    await _befriend(sessionmaker, alice.id, bob.id)
+    await _create_friendship(sessionmaker, alice.id, bob.id)
 
     await _login(client, "alice")
     create_response = await client.post("/rooms", json={"targetUserId": str(bob.id)})
