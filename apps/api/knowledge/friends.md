@@ -7,4 +7,5 @@
   - `POST /friends/accept` — разрешено только адресату; обновляет статус и шлёт уведомление обеим сторонам. 【F:apps/api/videochat_api/api/endpoints/friends.py†L160-L199】
   - `POST /friends/decline` — меняет статус на `declined` и уведомляет отправителя. 【F:apps/api/videochat_api/api/endpoints/friends.py†L202-L223】
 - **WebSocket**: при подключении пользователя грузятся идентификаторы друзей в статусе `accepted`, чтобы обновлять их присутствие. 【F:apps/api/videochat_api/websocket/server.py†L97-L112】
-- **Тесты**: сценарии дружбы extensively покрыты unit-тестами с monkeypatch для Socket.IO (`test_friends.py`). 【F:apps/api/tests/test_friends.py†L1-L129】
+- **Интеграция с комнатами**: `RoomService` использует `FriendshipService.get_friend_user_ids`, чтобы удостовериться, что инициатор и приглашённый состоят в дружбе. Это критично при ручной проверке: без принятой заявки `POST /rooms` вернёт 403. 【F:apps/api/videochat_api/services/rooms.py†L145-L191】
+- **Тесты**: сценарии дружбы extensively покрыты unit-тестами с monkeypatch для Socket.IO (`test_friends.py`), а также участвуют в интеграционном тесте комнат, где проверяется активация комнаты и рассылка событий. 【F:apps/api/tests/test_friends.py†L1-L129】【F:apps/api/tests/test_rooms.py†L1-L214】
