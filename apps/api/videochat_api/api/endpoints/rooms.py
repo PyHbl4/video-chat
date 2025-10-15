@@ -180,3 +180,54 @@ async def leave_room(
         )
 
     return RoomStatusResponse(room=room_schema)
+
+
+@router.post("/{room_id}/join", response_model=RoomStatusResponse)
+async def join_room(
+    room_id: str,
+    db: AsyncSession = Depends(get_session_dependency),
+    redis: Redis | None = Depends(get_redis),
+    current_user: User = Depends(get_current_user),
+) -> RoomStatusResponse:
+    try:
+        room_uuid = uuid.UUID(room_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Комната не найдена") from exc
+
+    service = _build_service(db, redis)
+    try:
+        room, changed = await service.join_room(room_uuid, current_user)
+    except RoomNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except RoomForbiddenError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except RoomConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+    room_schema = _model_to_schema(room)
+
+    if changed:
+        payload = {
+            "room": room_schema.model_dump(mode="json", by_alias=True),
+            "userId": str(current_user.id),
+        }
+        await sio.emit(
+            "room:user_joined",
+            payload,
+            room=f"video-room:{room_schema.id}",
+        )
+
+        recipient_ids = {
+            participant.user_id
+            for participant in room_schema.participants
+            if participant.user_id != str(current_user.id)
+        }
+
+        for recipient_id in recipient_ids:
+            await sio.emit(
+                "room:user_joined",
+                payload,
+                room=f"user:{recipient_id}",
+            )
+
+    return RoomStatusResponse(room=room_schema)
