@@ -54,8 +54,7 @@ services:
       <<: *default-environment
       PYTHONUNBUFFERED: "1"
     ports:
-    # - "8000:8000" Изменить позже
-      - "8080:8080"
+      - "8000:8000"
     depends_on:
       db:
         condition: service_healthy

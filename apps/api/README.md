@@ -65,13 +65,33 @@ Refer to [`config.py`](videochat_api/config.py) for the authoritative list and h
    uvicorn videochat_api.main:app --host 0.0.0.0 --port 8000 --reload
    ```
    The `videochat_api.main` module exposes both the FastAPI app and Socket.IO ASGI entrypoint. 【F:apps/api/videochat_api/main.py†L30-L62】
-
+5. **Запуск контейнера**
+   ```bash
+   docker compose -f ../../infra/docker/docker-compose.dev.yml up -d
+   ```
+   
 ## Testing
 Execute the automated test suite with:
 ```bash
 pytest
 ```
 The tests cover cookie- and token-based login flows, refresh rotation, friend workflows, and search validation. 【F:apps/api/tests/test_auth.py†L7-L83】【F:apps/api/tests/test_friends.py†L1-L129】【F:apps/api/tests/test_users.py†L1-L54】
+
+## Проверка работоспособности
+1. **Подготовьте окружение.** Активируйте виртуальное окружение и установите зависимости разработчика, включая `aiosqlite`, с помощью `pip install -e .[dev]`. Это обеспечит наличие асинхронного SQLite-драйвера, который использует тестовый стенд. 【F:apps/api/pyproject.toml†L31-L49】【F:apps/api/tests/conftest.py†L27-L47】
+2. **Запустите автотесты.** Команда `pytest` поднимает FastAPI-приложение в памяти, разворачивает временную БД SQLite и мок Redis, после чего прогоняет сценарии аутентификации, дружбы и видеокомнат. 【F:apps/api/tests/conftest.py†L11-L118】【F:apps/api/tests/test_rooms.py†L1-L142】
+3. **Проверьте ручные сценарии (опционально).** Разверните PostgreSQL и Redis, выполните `alembic upgrade head`, затем запустите `uvicorn videochat_api.main:app --reload` и протестируйте REST/Socket.IO маршруты через Postman или клиент Socket.IO. 【F:apps/api/README.md†L48-L84】【F:apps/api/videochat_api/main.py†L30-L62】【F:apps/api/videochat_api/websocket/server.py†L229-L342】
+
+### Проверка комнат вручную
+
+1. **Откройте Swagger UI или Postman.** После запуска сервера интерфейс Swagger доступен по адресу `http://localhost:8000/docs` и содержит все REST-эндпоинты комнат. Postman подойдёт, если удобнее сохранять запросы и токены.
+2. **Зарегистрируйте двух пользователей.** В Swagger выполните `POST /auth/register` дважды с разными `username`/`email`, либо подготовьте аналогичные запросы в Postman. Затем залогиньтесь через `POST /auth/login`, чтобы получить cookie-сессию (для браузера) или `access_token` (для заголовка `Authorization: Bearer ...`). 【F:apps/api/videochat_api/api/endpoints/auth.py†L31-L187】
+3. **Станьте друзьями.** Один пользователь отправляет запрос `POST /friends/request`, второй подтверждает через `POST /friends/accept`. Без дружбы комната не будет создана. 【F:apps/api/videochat_api/api/endpoints/friends.py†L61-L199】
+4. **Создайте комнату.** Аутентифицированный пользователь вызывает `POST /rooms` (в Swagger или Postman) и передаёт `friend_id` — идентификатор друга. В ответе вернётся `room_id` и статус `waiting`. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L49-L108】
+5. **Подтвердите статус.** Второй пользователь выполняет `GET /rooms/{room_id}` — статус обновится на `active`, когда оба участника присоединятся. Этот же эндпоинт помогает убедиться, что выход через `POST /rooms/{room_id}/leave` меняет статус на `ending/closed`. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L111-L164】
+6. **Протестируйте WebSocket-сигналинг.** Для проверки сигналинга воспользуйтесь клиентом Socket.IO (например, `npx socket.io-client-cli`). Подключитесь к `ws://localhost:8000/ws/rooms` с параметрами `roomId=<room_id>` и теми же токенами/куки, что использовались при REST-вызовах. После соединения отправьте событие `room:signal` с типом `offer`/`answer` и убедитесь, что второй клиент получает ретрансляцию `room:signal`. 【F:apps/api/videochat_api/websocket/server.py†L229-L342】
+
+> 💡 **Совет:** если вы используете Swagger, браузер автоматически сохраняет cookie сессии. В Postman для повторных вызовов удобнее сохранять переменную `{{access_token}}` и подставлять её в заголовок `Authorization`.
 
 ## Database Schema & Migrations
 Alembic migration scripts live under `alembic/versions`. The current baseline creates user, device, session, and friendship tables that align with the SQLAlchemy models. Run `alembic revision --autogenerate -m "message"` to add new migrations after editing models. 【F:apps/api/alembic/versions/20240912_000001_create_users_table.py†L1-L20】【F:apps/api/videochat_api/models/user.py†L1-L34】【F:apps/api/videochat_api/models/device.py†L1-L46】【F:apps/api/videochat_api/models/session.py†L1-L44】【F:apps/api/videochat_api/models/friend.py†L1-L44】

@@ -2,6 +2,7 @@ README.md
 pyproject.toml
 tests/test_auth.py
 tests/test_friends.py
+tests/test_rooms.py
 tests/test_users.py
 videochat_api/__init__.py
 videochat_api/config.py
@@ -17,6 +18,7 @@ videochat_api/api/routes.py
 videochat_api/api/endpoints/__init__.py
 videochat_api/api/endpoints/auth.py
 videochat_api/api/endpoints/friends.py
+videochat_api/api/endpoints/rooms.py
 videochat_api/api/endpoints/system.py
 videochat_api/api/endpoints/users.py
 videochat_api/auth/__init__.py
@@ -28,15 +30,18 @@ videochat_api/db/session.py
 videochat_api/models/__init__.py
 videochat_api/models/device.py
 videochat_api/models/friend.py
+videochat_api/models/room.py
 videochat_api/models/session.py
 videochat_api/models/user.py
 videochat_api/schemas/__init__.py
 videochat_api/schemas/auth.py
 videochat_api/schemas/friends.py
+videochat_api/schemas/room.py
 videochat_api/schemas/users.py
 videochat_api/services/__init__.py
 videochat_api/services/friendships.py
 videochat_api/services/presence.py
 videochat_api/services/rate_limiter.py
+videochat_api/services/rooms.py
 videochat_api/websocket/__init__.py
 videochat_api/websocket/server.py
