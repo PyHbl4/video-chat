@@ -52,7 +52,7 @@ class LogoutRequest(BaseModel):
     refresh_token: str | None = Field(default=None, min_length=16, max_length=512)
     device_id: str | None = Field(default=None, max_length=128)
 
-
+      
 class UserResponse(BaseModel):
     id: int
     username: str
