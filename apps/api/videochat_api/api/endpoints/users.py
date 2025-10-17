@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from videochat_api.auth.session import session_manager
 from videochat_api.dependencies import (
     get_current_admin_user,
     get_current_user,
@@ -145,3 +146,36 @@ async def search_users(
     ]
 
     return UserSearchResponse(items=items)
+
+
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user(
+    user_id: str,
+    db: AsyncSession = Depends(get_session_dependency),
+    current_user: User = Depends(get_current_user),
+) -> Response:
+    try:
+        target_id = int(user_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Некорректный идентификатор пользователя",
+        )
+
+    result = await db.execute(select(User).where(User.id == target_id))
+    target = result.scalar_one_or_none()
+    if target is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден")
+
+    is_owner = current_user.id == target.id
+    if not (current_user.is_admin or is_owner):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Недостаточно прав для удаления пользователя",
+        )
+
+    await session_manager.revoke_user_sessions(db, target.id)
+    await db.delete(target)
+    await db.commit()
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
