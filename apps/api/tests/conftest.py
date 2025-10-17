@@ -1,28 +1,28 @@
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from types import SimpleNamespace
 from typing import AsyncGenerator, Awaitable, Callable
 
 import pytest
-from fastapi import FastAPI
 from httpx import AsyncClient
 
 pytest_plugins = ("pytest_asyncio_plugin",)
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
-from videochat_api.api.endpoints import auth as auth_endpoints
-from videochat_api.api.endpoints import friends as friends_endpoints
-from videochat_api.api.endpoints import rooms as rooms_endpoints
-from videochat_api.api.endpoints import users as users_endpoints
+from fastapi import FastAPI
+
+from videochat_api.asgi import ASGIApplication, create_socketio_fastapi_app
 from videochat_api.auth.passwords import hash_password
 from videochat_api.config import settings
 from videochat_api.db.base import Base
 from videochat_api.dependencies import get_rate_limiter, get_session_dependency
+from videochat_api.main import create_fastapi_app
 from videochat_api.models import User
 from videochat_api.services import PresenceService
-from videochat_api.websocket.server import bind_fastapi_app
+from videochat_api.websocket.server import sio
 
 
 @pytest.fixture
@@ -92,29 +92,39 @@ class _FakeRedis:
 
 
 @pytest.fixture
-async def app(sessionmaker: async_sessionmaker[AsyncSession]) -> FastAPI:
-    app = FastAPI()
-    app.include_router(auth_endpoints.router)
-    app.include_router(users_endpoints.router)
-    app.include_router(friends_endpoints.router)
-    app.include_router(rooms_endpoints.router)
+async def app(sessionmaker: async_sessionmaker[AsyncSession]) -> ASGIApplication:
+    fastapi_app = create_fastapi_app()
 
     async def override_session_dependency() -> AsyncGenerator[AsyncSession, None]:
         async with sessionmaker() as session:
             yield session
 
-    app.dependency_overrides[get_session_dependency] = override_session_dependency
-    app.dependency_overrides[get_rate_limiter] = lambda: _AllowAllLimiter()
+    fastapi_app.dependency_overrides[get_session_dependency] = (
+        override_session_dependency
+    )
+    fastapi_app.dependency_overrides[get_rate_limiter] = lambda: _AllowAllLimiter()
 
     fake_redis = _FakeRedis()
-    app.state.redis = fake_redis
-    app.state.presence_service = PresenceService(fake_redis)
-    bind_fastapi_app(app)
-    return app
+    presence_service = PresenceService(fake_redis)
+    fastapi_app.state.redis = fake_redis
+    fastapi_app.state.presence_service = presence_service
+
+    @asynccontextmanager
+    async def _lifespan_override(app: FastAPI) -> AsyncGenerator[None, None]:
+        app.state.redis = fake_redis
+        app.state.presence_service = presence_service
+        try:
+            yield
+        finally:
+            await fake_redis.aclose()
+
+    fastapi_app.router.lifespan_context = _lifespan_override
+
+    return create_socketio_fastapi_app(fastapi_app, sio)
 
 
 @pytest.fixture
-async def client(app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
+async def client(app: ASGIApplication) -> AsyncGenerator[AsyncClient, None]:
     async with AsyncClient(app=app, base_url="http://testserver") as test_client:
         yield test_client
 
