@@ -46,6 +46,17 @@ class RoomService:
         self._redis = redis
         self._ttl_seconds = ttl_seconds
 
+    @staticmethod
+    def _normalize_room_enums(room: Room) -> Room:
+        if not isinstance(room.status, RoomStatus):
+            room.status = RoomStatus(room.status)
+
+        for participant in room.participants:
+            if not isinstance(participant.role, RoomParticipantRole):
+                participant.role = RoomParticipantRole(participant.role)
+
+        return room
+
     async def create_room(self, initiator: User, target: User) -> Room:
         if initiator.id == target.id:
             raise RoomConflictError("Нельзя создать комнату с самим собой")
@@ -256,7 +267,7 @@ class RoomService:
         room = result.scalars().first()
         if room is None:
             raise RoomNotFoundError("Комната не найдена")
-        return room
+        return self._normalize_room_enums(room)
 
     @staticmethod
     def _find_participant(room: Room, user_id: int) -> RoomParticipant | None:
@@ -276,6 +287,8 @@ class RoomService:
     async def _persist_cache(self, room: Room) -> None:
         if self._redis is None:
             return
+
+        self._normalize_room_enums(room)
 
         payload = {
             "id": str(room.id),
@@ -310,6 +323,8 @@ class RoomService:
     async def _reload(self, room: Room) -> None:
         await self._db.refresh(room)
         await self._db.refresh(room, attribute_names=["participants"])
+        self._normalize_room_enums(room)
+
 
     @staticmethod
     def _room_key(room_id: uuid.UUID) -> str:
