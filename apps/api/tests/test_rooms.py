@@ -8,7 +8,14 @@ from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 
 from videochat_api.api.endpoints.rooms import _model_to_schema
-from videochat_api.models import FriendRelationship, FriendStatus as FriendModelStatus, User
+from videochat_api.models import (
+    FriendRelationship,
+    FriendStatus as FriendModelStatus,
+    Room,
+    RoomParticipantRole,
+    RoomStatus,
+    User,
+)
 from videochat_api.schemas import (
     RoomParticipantRole as RoomParticipantRoleSchema,
     RoomStatus as RoomStatusSchema,
@@ -323,6 +330,45 @@ async def test_join_room_activates_and_is_idempotent(
 
     joined_events_after = [event for event in emitted if event[0] == "room:user_joined"]
     assert len(joined_events_after) == emitted_count
+
+
+@pytest.mark.asyncio
+async def test_join_room_normalizes_string_statuses(
+    app: FastAPI,
+    sessionmaker: async_sessionmaker[AsyncSession],
+    user_factory,
+    monkeypatch,
+) -> None:
+    alice = await user_factory("alice", "alice@example.com", "Password123!")
+    bob = await user_factory("bob", "bob@example.com", "Password123!")
+
+    await _create_friendship(sessionmaker, alice.id, bob.id)
+
+    async with sessionmaker() as session:
+        service = RoomService(session, app.state.redis)
+        initiator = await session.get(User, alice.id)
+        invitee = await session.get(User, bob.id)
+        assert initiator is not None
+        assert invitee is not None
+
+        room = await service.create_room(initiator, invitee)
+
+        original_get_room = RoomService._get_room
+
+        async def fake_get_room(self: RoomService, room_id: uuid.UUID) -> Room:
+            room_obj = await original_get_room(self, room_id)
+            room_obj.status = room_obj.status.value  # type: ignore[assignment]
+            for participant in room_obj.participants:
+                participant.role = participant.role.value  # type: ignore[assignment]
+            return room_obj
+
+        with monkeypatch.context() as patcher:
+            patcher.setattr(RoomService, "_get_room", fake_get_room)
+            joined_room, changed = await service.join_room(room.id, invitee)
+
+    assert changed is True
+    assert joined_room.status == RoomStatus.ACTIVE
+    assert all(isinstance(part.role, RoomParticipantRole) for part in joined_room.participants)
 
 
 @pytest.mark.asyncio
