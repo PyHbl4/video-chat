@@ -4,6 +4,7 @@ import enum
 import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
+from typing import Optional
 
 from sqlalchemy import DateTime, Enum, ForeignKey, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
@@ -60,7 +61,7 @@ class Room(Base):
     initiator: Mapped["User"] = relationship(
         "User", backref="initiated_rooms", foreign_keys=[initiator_id]
     )
-    target_user: Mapped["User" | None] = relationship(
+    target_user: Mapped["User | None"] = relationship(
         "User", backref="targeted_rooms", foreign_keys=[target_user_id]
     )
     participants: Mapped[list["RoomParticipant"]] = relationship(
