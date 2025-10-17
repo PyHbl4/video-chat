@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import uuid
+from enum import Enum
+from typing import Any, Type, TypeVar
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from redis.asyncio import Redis
@@ -34,12 +36,27 @@ from videochat_api.websocket.server import sio
 
 router = APIRouter(prefix="/rooms", tags=["rooms"])
 
+EnumType = TypeVar("EnumType", bound=Enum)
+
+
+def _coerce_enum(value: Any, enum_cls: Type[EnumType]) -> EnumType:
+    if isinstance(value, enum_cls):
+        return value
+    if isinstance(value, Enum):
+        value = value.value
+    if isinstance(value, str):
+        try:
+            return enum_cls(value)
+        except ValueError as exc:  # pragma: no cover - defensive branch
+            raise ValueError(f"Unknown value {value!r} for {enum_cls.__name__}") from exc
+    raise TypeError(f"Unsupported enum value {value!r} for {enum_cls.__name__}")
+
 
 def _model_to_schema(room_model: RoomModel) -> RoomSchema:
     participants = [
         RoomParticipantSchema(
             user_id=str(part.user_id),
-            role=RoomParticipantRoleSchema(part.role.value),
+            role=_coerce_enum(part.role, RoomParticipantRoleSchema),
             joined_at=part.joined_at,
             left_at=part.left_at,
         )
@@ -47,7 +64,7 @@ def _model_to_schema(room_model: RoomModel) -> RoomSchema:
     ]
     return RoomSchema(
         id=str(room_model.id),
-        status=RoomStatusSchema(room_model.status.value),
+        status=_coerce_enum(room_model.status, RoomStatusSchema),
         initiator_id=str(room_model.initiator_id),
         created_at=room_model.created_at,
         updated_at=room_model.updated_at,
