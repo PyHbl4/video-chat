@@ -1,5 +1,7 @@
 import pytest
 
+from videochat_api.models import User
+
 
 async def _login(client, identifier: str, password: str = "Password123!", **extra: object) -> None:
     response = await client.post("/auth/login", json={"identifier": identifier, "password": password, **extra})
@@ -89,3 +91,70 @@ async def test_list_users_with_includes(client, user_factory) -> None:
     session = target_payload["sessions"][0]
     assert session["kind"] == "desktop"
     assert session["deviceId"] is not None
+
+
+@pytest.mark.asyncio
+async def test_delete_user_by_owner(client, user_factory, sessionmaker) -> None:
+    user = await user_factory("self", "self@example.com", "Password123!")
+
+    await _login(client, "self")
+
+    response = await client.delete(f"/users/{user.id}")
+    assert response.status_code == 204
+
+    me_response = await client.get("/auth/me")
+    assert me_response.status_code == 401
+
+    async with sessionmaker() as session:
+        removed_user = await session.get(User, user.id)
+        assert removed_user is None
+
+
+@pytest.mark.asyncio
+async def test_delete_user_by_admin(client, user_factory, sessionmaker) -> None:
+    await user_factory("admin", "admin@example.com", "Password123!", is_admin=True)
+    target = await user_factory("target-delete", "target-delete@example.com", "Password123!")
+
+    await _login(client, "admin")
+
+    response = await client.delete(f"/users/{target.id}")
+    assert response.status_code == 204
+
+    async with sessionmaker() as session:
+        removed_user = await session.get(User, target.id)
+        assert removed_user is None
+
+
+@pytest.mark.asyncio
+async def test_delete_user_forbidden_for_other_user(client, user_factory, sessionmaker) -> None:
+    user = await user_factory("owner", "owner@example.com", "Password123!")
+    target = await user_factory("foreign", "foreign@example.com", "Password123!")
+
+    await _login(client, "owner")
+
+    response = await client.delete(f"/users/{target.id}")
+    assert response.status_code == 403
+
+    async with sessionmaker() as session:
+        existing_user = await session.get(User, target.id)
+        assert existing_user is not None
+
+
+@pytest.mark.asyncio
+async def test_delete_user_not_found(client, user_factory) -> None:
+    await user_factory("admin2", "admin2@example.com", "Password123!", is_admin=True)
+
+    await _login(client, "admin2")
+
+    response = await client.delete("/users/9999")
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_delete_user_invalid_identifier(client, user_factory) -> None:
+    await user_factory("admin3", "admin3@example.com", "Password123!", is_admin=True)
+
+    await _login(client, "admin3")
+
+    response = await client.delete("/users/invalid")
+    assert response.status_code == 400
