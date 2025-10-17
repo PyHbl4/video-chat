@@ -37,6 +37,7 @@ import { ThemeToggle } from "@/components/app/theme-toggle"
 import { LogoutButton } from "@/components/auth/logout-button"
 import { useUIStore } from "@/stores/ui-store"
 import { BrandHeader } from "./brand-header"
+import { FriendsProvider } from "../providers/friends-provider"
 import { UserPreferencesProvider } from "../providers/user-preferences-provider"
 
 export interface AppShellProps {
@@ -136,28 +137,30 @@ export function AppShell({ user, children }: AppShellProps) {
 
   return (
     <AppUserProvider user={user}>
-      <UserPreferencesProvider>
-        <div className="relative flex min-h-screen w-full bg-muted/10">
-          <AppSidebar pathname={pathname} user={user} getBadgeValue={getBadgeValue} />
-          <SidebarInset className="flex flex-1 flex-col">
-            <AppTopBar
-              user={user}
-              currentNav={currentNav}
-              pathname={pathname}
-              getBadgeValue={getBadgeValue}
-              onOpenSearch={() => router.push("/app/search")}
-            />
-            <main className="flex-1 space-y-6 px-4 pb-24 pt-6 transition-colors duration-200 md:px-6 md:pb-10 lg:px-8">
-              {children}
-            </main>
-            <AppMobileNav pathname={pathname} getBadgeValue={getBadgeValue} />
-            <div aria-live="polite" className="sr-only">
-              Доступные сочетания клавиш: G затем F — Друзья, G затем C — Чаты, G затем L — Звонки,
-              G затем I — Входящие, G затем S — Настройки, G затем K — Поиск.
-            </div>
-          </SidebarInset>
-        </div>
-      </UserPreferencesProvider>
+      <FriendsProvider>
+        <UserPreferencesProvider>
+          <div className="relative flex min-h-screen w-full bg-muted/10">
+            <AppSidebar pathname={pathname} user={user} getBadgeValue={getBadgeValue} />
+            <SidebarInset className="flex flex-1 flex-col">
+              <AppTopBar
+                user={user}
+                currentNav={currentNav}
+                pathname={pathname}
+                getBadgeValue={getBadgeValue}
+                onOpenSearch={() => router.push("/app/search")}
+              />
+              <main className="flex-1 space-y-6 px-4 pb-24 pt-6 transition-colors duration-200 md:px-6 md:pb-10 lg:px-8">
+                {children}
+              </main>
+              <AppMobileNav pathname={pathname} getBadgeValue={getBadgeValue} />
+              <div aria-live="polite" className="sr-only">
+                Доступные сочетания клавиш: G затем F — Друзья, G затем C — Чаты, G затем L — Звонки,
+                G затем I — Входящие, G затем S — Настройки, G затем K — Поиск.
+              </div>
+            </SidebarInset>
+          </div>
+        </UserPreferencesProvider>
+      </FriendsProvider>
     </AppUserProvider>
   )
 }

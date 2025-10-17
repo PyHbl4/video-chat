@@ -161,7 +161,20 @@ function toViewModel(friend: Friend, state: FriendsState): FriendViewModel | nul
 export const useFriendsStore = create<FriendsState>((set, get) => ({
   ...baseDataState,
   initialize(username) {
-    set({ currentUsername: username })
+    set((state) => {
+      if (state.currentUsername === username) {
+        return {}
+      }
+
+      return {
+        ...baseDataState,
+        currentUsername: username,
+        relationships: {},
+        presenceByUserId: {},
+        searchResults: [],
+        notifications: []
+      }
+    })
   },
   setFilter(filter) {
     set({ filter })

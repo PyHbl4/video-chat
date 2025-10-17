@@ -87,4 +87,53 @@ describe("friends-store", () => {
     const [accepted] = selectFilteredAccepted(useFriendsStore.getState())
     expect(accepted.presence).toBe("online")
   })
+
+  it("preserves socket status and presence across reinitialization for the same user", () => {
+    const requester = createUser({ id: "user-1", username: "alice" })
+    const addressee = createUser({ id: "user-2", username: "bob" })
+    const friend = createFriend({
+      id: "friend-1",
+      requester,
+      addressee,
+      status: "accepted"
+    })
+
+    const state = useFriendsStore.getState()
+    state.initialize("alice")
+    state.applyFriendList({ items: [friend] })
+    state.setSocketStatus("connected")
+    state.handlePresenceUpdate({ userId: addressee.id, status: "online" })
+
+    state.initialize("alice")
+
+    const currentState = useFriendsStore.getState()
+    expect(currentState.socketStatus).toBe("connected")
+    const [accepted] = selectFilteredAccepted(currentState)
+    expect(accepted.presence).toBe("online")
+  })
+
+  it("resets relationships when switching to another user", () => {
+    const requester = createUser({ id: "user-1", username: "alice" })
+    const addressee = createUser({ id: "user-2", username: "bob" })
+    const friend = createFriend({
+      id: "friend-1",
+      requester,
+      addressee,
+      status: "accepted"
+    })
+
+    const state = useFriendsStore.getState()
+    state.initialize("alice")
+    state.applyFriendList({ items: [friend] })
+    state.setSocketStatus("connected")
+    state.handlePresenceUpdate({ userId: addressee.id, status: "online" })
+
+    state.initialize("carol")
+
+    const currentState = useFriendsStore.getState()
+    expect(currentState.currentUsername).toBe("carol")
+    expect(currentState.hasLoaded).toBe(false)
+    expect(Object.values(currentState.relationships)).toHaveLength(0)
+    expect(currentState.socketStatus).toBe("idle")
+  })
 })

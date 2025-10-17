@@ -1,8 +1,6 @@
 
 "use client"
 
-import { useEffect } from "react"
-
 import {
   Badge,
   Button,
@@ -15,38 +13,13 @@ import {
 } from "@video-chat/ui"
 import { CalendarIcon, SparklesIcon, VideoIcon } from "lucide-react"
 
-import { useAppUser } from "@/components/app/app-user-context"
 import { AppPageHeader } from "@/components/app/page-header"
 import { FriendsList } from "@/components/friends/friends-list"
 import { FriendsSidebar } from "@/components/friends/friends-sidebar"
 import { useFriendsApi } from "@/hooks/use-friends-api"
-import { useFriendsRealtime } from "@/hooks/use-friends-realtime"
-import { useFriendsToasts } from "@/hooks/use-friends-toasts"
-import { useFriendsStore } from "@/stores/friends-store"
 
 export function FriendsAppPage() {
-  const user = useAppUser()
-  const initialize = useFriendsStore((state) => state.initialize)
-  const loadRelationships = useFriendsStore((state) => state.loadRelationships)
-  const hasLoaded = useFriendsStore((state) => state.hasLoaded)
   const { friends, users } = useFriendsApi()
-
-  useFriendsRealtime({ enabled: Boolean(user?.id) })
-  useFriendsToasts()
-
-  useEffect(() => {
-    if (user?.username) {
-      initialize(user.username)
-    }
-  }, [initialize, user?.username])
-
-  useEffect(() => {
-    if (!user?.username || hasLoaded) {
-      return
-    }
-
-    void loadRelationships(friends)
-  }, [friends, hasLoaded, loadRelationships, user?.username])
 
   return (
     <div className="space-y-6">
