@@ -4,7 +4,7 @@
 1. **Создание**. Пользователь-инициатор вызывает `POST /rooms` с `target_user_id`. `RoomService.create_room` проверяет дружбу, отсутствие активной комнаты у инициатора и формирует объект `Room` со статусом `waiting`. Одновременно через Socket.IO рассылается событие `room:invited` адресату. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L82-L118】【F:apps/api/videochat_api/services/rooms.py†L145-L191】
 2. **Присоединение**. При первом успешном `POST /rooms/{room_id}/join` комната переходит в статус `active`, список участников пополняется, а событие `room:user_joined` отправляется в пространство `video-room:{id}` и индивидуальные комнаты пользователей. Повторный вызов идемпотентен — статус не меняется, `changed=False`. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L152-L198】【F:apps/api/videochat_api/services/rooms.py†L193-L218】
 3. **Выход**. `POST /rooms/{room_id}/leave` помечает участника как покинувшего. Если в комнате никого не осталось, статус переключается на `closed`, а событие `room:user_left` рассылается слушателям. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L131-L198】
-4. **Получение статуса**. `GET /rooms/{room_id}` и `GET /rooms/me` возвращают актуальный снимок комнаты для участников. Попытка доступа постороннего пользователя приведёт к `RoomForbiddenError`. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L120-L150】
+4. **Получение статуса**. `GET /rooms/{room_id}` возвращает актуальный снимок конкретной комнаты для участников, а `GET /rooms/me` выдаёт перечень всех комнат пользователя в статусах `waiting`, `active` и `ending`, включая приглашения, где он ещё не присоединился. Попытка доступа постороннего пользователя приведёт к `RoomForbiddenError`. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L130-L205】
 5. **Админский список**. `GET /rooms` показывает активные и ожидающие комнаты, агрегируя данные из БД и Redis. Эндпоинт доступен только администраторам. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L59-L79】
 
 ## Ручная проверка функциональности
@@ -20,7 +20,7 @@
    - Пользователь B принимает заявку (`POST /friends/accept`). После этого `FriendshipService.get_friend_user_ids` позволит RoomService создать комнату. 【F:apps/api/videochat_api/services/friendships.py†L1-L73】
 4. **Создание комнаты**
    - Под пользователем A вызовите `POST /rooms` с `target_user_id = B`. Убедитесь, что ответ содержит `status=waiting`, а Socket.IO клиент пользователя B получил `room:invited` с нужным `room.id`.
-   - Дополнительно запросите `GET /rooms/me`, чтобы убедиться, что инициатор видит созданную комнату. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L102-L118】
+   - Дополнительно запросите `GET /rooms/me`, чтобы убедиться, что инициатор видит созданную комнату в списке. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L92-L138】
 5. **Присоединение и проверка идемпотентности**
    - Авторизуйтесь как пользователь B и вызовите `POST /rooms/{room_id}/join`. Проверьте, что REST-ответ содержит `status=active` и список участников из двух пользователей.
    - Socket.IO клиент должен зафиксировать `room:user_joined` в личной комнате пользователя A и в `video-room:{room_id}`.
@@ -30,7 +30,7 @@
    - Попробуйте вызвать `GET /rooms/{room_id}` от третьего аккаунта — должен вернуться `403 Forbidden`.
 7. **Выход и закрытие**
    - Пользователь B вызывает `POST /rooms/{room_id}/leave`. Socket.IO получит `room:user_left`, а статус перейдёт в `ending` или `waiting` (если остался один участник).
-   - Пользователь A вызывает `POST /rooms/{room_id}/leave`. После выхода последнего участника статус `closed`, событие рассылается, `GET /rooms/me` возвращает 404.
+   - Пользователь A вызывает `POST /rooms/{room_id}/leave`. После выхода последнего участника статус `closed`, событие рассылается, `GET /rooms/me` возвращает пустой список. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L164-L196】【F:apps/api/videochat_api/services/rooms.py†L181-L248】
 8. **Админский обзор**
    - Авторизуйтесь администратором, вызовите `GET /rooms` и убедитесь, что закрытая комната отсутствует в списке. Если до этого не завершали комнату, статус `waiting`/`active` будет отражён с актуальными участниками.
 

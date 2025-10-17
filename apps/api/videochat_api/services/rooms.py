@@ -6,9 +6,9 @@ from datetime import datetime, timezone
 import uuid
 
 from redis.asyncio import Redis
-from sqlalchemy import Select, select
+from sqlalchemy import Select, and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import aliased, selectinload
 
 from videochat_api.models import Room, RoomParticipant, RoomParticipantRole, RoomStatus, User
 from videochat_api.models.friend import FriendStatus as FriendModelStatus
@@ -60,7 +60,11 @@ class RoomService:
         await self._ensure_user_is_free(target.id)
 
         now = self._now()
-        room = Room(initiator_id=initiator.id, status=RoomStatus.WAITING)
+        room = Room(
+            initiator_id=initiator.id,
+            target_user_id=target.id,
+            status=RoomStatus.WAITING,
+        )
         participant = RoomParticipant(
             user_id=initiator.id,
             role=RoomParticipantRole.INITIATOR,
@@ -174,22 +178,34 @@ class RoomService:
 
         raise RoomForbiddenError("Нет доступа к комнате")
 
-    async def get_current_room_for_user(self, user_id: int) -> Room:
+    async def list_rooms_for_user(self, user_id: int) -> list[Room]:
+        participant_alias = aliased(RoomParticipant)
         stmt: Select[tuple[Room]] = (
             select(Room)
-            .join(RoomParticipant)
+            .outerjoin(
+                participant_alias,
+                and_(
+                    participant_alias.room_id == Room.id,
+                    participant_alias.user_id == user_id,
+                    participant_alias.left_at.is_(None),
+                ),
+            )
             .options(selectinload(Room.participants))
-            .where(RoomParticipant.user_id == user_id)
-            .where(RoomParticipant.left_at.is_(None))
             .where(Room.status.in_(self.ACTIVE_STATUSES))
+            .where(
+                or_(
+                    participant_alias.id.isnot(None),
+                    and_(
+                        Room.status == RoomStatus.WAITING,
+                        Room.target_user_id == user_id,
+                    ),
+                )
+            )
             .order_by(Room.created_at.desc())
-            .limit(1)
         )
         result = await self._db.execute(stmt)
-        room = result.scalars().unique().first()
-        if room is None:
-            raise RoomNotFoundError("Активная комната не найдена")
-        return room
+        rooms = result.scalars().unique().all()
+        return rooms
 
     async def list_active_rooms(self) -> list[Room]:
         stmt: Select[tuple[Room]] = (
@@ -216,6 +232,19 @@ class RoomService:
         existing = result.scalars().first()
         if existing:
             raise RoomConflictError("Пользователь уже состоит в активной комнате")
+
+        waiting_stmt = (
+            select(Room)
+            .options(selectinload(Room.participants))
+            .where(Room.status == RoomStatus.WAITING)
+            .where(Room.target_user_id == user_id)
+            .order_by(Room.created_at.desc())
+            .limit(1)
+        )
+        waiting_result = await self._db.execute(waiting_stmt)
+        waiting_room = waiting_result.scalars().first()
+        if waiting_room:
+            raise RoomConflictError("Пользователь уже приглашён в активную комнату")
 
     async def _get_room(self, room_id: uuid.UUID) -> Room:
         stmt: Select[tuple[Room]] = (
@@ -255,6 +284,7 @@ class RoomService:
             "createdAt": room.created_at.isoformat() if room.created_at else None,
             "updatedAt": room.updated_at.isoformat() if room.updated_at else None,
             "closedAt": room.closed_at.isoformat() if room.closed_at else None,
+            "targetUserId": str(room.target_user_id) if room.target_user_id is not None else None,
         }
         await self._redis.set(self._room_key(room.id), json.dumps(payload), ex=self._ttl_seconds)
 

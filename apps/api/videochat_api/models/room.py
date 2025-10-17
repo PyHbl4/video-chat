@@ -37,6 +37,9 @@ class Room(Base):
     initiator_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    target_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     status: Mapped[RoomStatus] = mapped_column(
         Enum(
             RoomStatus,
@@ -54,7 +57,12 @@ class Room(Base):
     )
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    initiator: Mapped["User"] = relationship("User", backref="initiated_rooms")
+    initiator: Mapped["User"] = relationship(
+        "User", backref="initiated_rooms", foreign_keys=[initiator_id]
+    )
+    target_user: Mapped["User" | None] = relationship(
+        "User", backref="targeted_rooms", foreign_keys=[target_user_id]
+    )
     participants: Mapped[list["RoomParticipant"]] = relationship(
         "RoomParticipant",
         back_populates="room",

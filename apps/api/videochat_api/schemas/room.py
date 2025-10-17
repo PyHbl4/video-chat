@@ -35,6 +35,11 @@ class Room(BaseModel):
     id: str
     status: RoomStatus
     initiator_id: str = Field(alias="initiatorId", serialization_alias="initiatorId")
+    target_user_id: str | None = Field(
+        default=None,
+        alias="targetUserId",
+        serialization_alias="targetUserId",
+    )
     created_at: datetime = Field(alias="createdAt", serialization_alias="createdAt")
     updated_at: datetime = Field(alias="updatedAt", serialization_alias="updatedAt")
     closed_at: datetime | None = Field(default=None, alias="closedAt", serialization_alias="closedAt")
