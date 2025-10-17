@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 import uuid
 
 from redis.asyncio import Redis
-from sqlalchemy import Select, and_, or_, select
+from sqlalchemy import Select, and_, inspect, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, selectinload
 
@@ -287,6 +287,12 @@ class RoomService:
     async def _persist_cache(self, room: Room) -> None:
         if self._redis is None:
             return
+
+        state = inspect(room)
+        for field in ("created_at", "updated_at", "closed_at"):
+            attr_state = state.attrs[field]
+            if attr_state.expired:
+                await self._db.refresh(room, attribute_names=[field])
 
         self._normalize_room_enums(room)
 
