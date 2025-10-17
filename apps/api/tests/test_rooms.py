@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timezone
 from types import SimpleNamespace
 import uuid
@@ -21,6 +22,8 @@ from videochat_api.schemas import (
     RoomStatus as RoomStatusSchema,
 )
 from videochat_api.services.rooms import RoomService
+
+from .conftest import _FakeRedis
 
 
 async def _login(client: AsyncClient, identifier: str, password: str = "Password123!") -> None:
@@ -369,6 +372,51 @@ async def test_join_room_normalizes_string_statuses(
     assert changed is True
     assert joined_room.status == RoomStatus.ACTIVE
     assert all(isinstance(part.role, RoomParticipantRole) for part in joined_room.participants)
+
+
+@pytest.mark.asyncio
+async def test_join_room_refreshes_expired_updated_at(
+    sessionmaker: async_sessionmaker[AsyncSession],
+    user_factory,
+) -> None:
+    alice = await user_factory("alice", "alice@example.com", "Password123!")
+    bob = await user_factory("bob", "bob@example.com", "Password123!")
+
+    await _create_friendship(sessionmaker, alice.id, bob.id)
+
+    fake_redis = _FakeRedis()
+
+    async with sessionmaker() as session:
+        service = RoomService(session, fake_redis)
+
+        initiator = await session.get(User, alice.id)
+        invitee = await session.get(User, bob.id)
+        assert initiator is not None
+        assert invitee is not None
+
+        initiator_id = initiator.id
+        invitee_id = invitee.id
+
+        room = await service.create_room(initiator, invitee)
+        room_id = room.id
+
+        await session.flush()
+        await session.expire(room, ["updated_at"])
+
+        joined_room, changed = await service.join_room(room.id, invitee)
+
+    assert changed is True
+    assert joined_room.status == RoomStatus.ACTIVE
+
+    room_cache_raw = await fake_redis.get(f"room:{room_id}")
+    assert room_cache_raw is not None
+    cached_room = json.loads(room_cache_raw)
+    assert cached_room["id"] == str(room_id)
+    assert cached_room["status"] == RoomStatus.ACTIVE.value
+    assert cached_room["updatedAt"] is not None
+
+    participants = await fake_redis.smembers(f"room:{room_id}:participants")
+    assert participants == {str(initiator_id), str(invitee_id)}
 
 
 @pytest.mark.asyncio
