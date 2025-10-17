@@ -20,6 +20,7 @@
    - Пользователь B принимает заявку (`POST /friends/accept`). После этого `FriendshipService.get_friend_user_ids` позволит RoomService создать комнату. 【F:apps/api/videochat_api/services/friendships.py†L1-L73】
 4. **Создание комнаты**
    - Под пользователем A вызовите `POST /rooms` с `target_user_id = B`. Убедитесь, что ответ содержит `status=waiting`, а Socket.IO клиент пользователя B получил `room:invited` с нужным `room.id`.
+   - Не меняя статус комнаты, авторизуйтесь под пользователем B и запросите `GET /rooms/me`. Ответ должен содержать комнату со статусом `waiting` и верным `roomId`, несмотря на отсутствие записи участника в БД.
    - Дополнительно запросите `GET /rooms/me`, чтобы убедиться, что инициатор видит созданную комнату в списке. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L92-L138】
 5. **Присоединение и проверка идемпотентности**
    - Авторизуйтесь как пользователь B и вызовите `POST /rooms/{room_id}/join`. Проверьте, что REST-ответ содержит `status=active` и список участников из двух пользователей.
@@ -30,7 +31,7 @@
    - Попробуйте вызвать `GET /rooms/{room_id}` от третьего аккаунта — должен вернуться `403 Forbidden`.
 7. **Выход и закрытие**
    - Пользователь B вызывает `POST /rooms/{room_id}/leave`. Socket.IO получит `room:user_left`, а статус перейдёт в `ending` или `waiting` (если остался один участник).
-   - Пользователь A вызывает `POST /rooms/{room_id}/leave`. После выхода последнего участника статус `closed`, событие рассылается, `GET /rooms/me` возвращает пустой список. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L164-L196】【F:apps/api/videochat_api/services/rooms.py†L181-L248】
+   - Пользователь A вызывает `POST /rooms/{room_id}/leave`. После выхода последнего участника статус `closed`, событие рассылается, `GET /rooms/me` возвращает пустой список для обоих пользователей. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L164-L196】【F:apps/api/videochat_api/services/rooms.py†L181-L248】
 8. **Админский обзор**
    - Авторизуйтесь администратором, вызовите `GET /rooms` и убедитесь, что закрытая комната отсутствует в списке. Если до этого не завершали комнату, статус `waiting`/`active` будет отражён с актуальными участниками.
 
