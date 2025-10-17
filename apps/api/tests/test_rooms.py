@@ -150,7 +150,7 @@ async def test_room_status_forbidden_for_pending_friend(
 
 
 @pytest.mark.asyncio
-async def test_get_my_room_returns_current_room(
+async def test_get_my_rooms_returns_waiting_for_initiator(
     client: AsyncClient,
     user_factory,
     sessionmaker: async_sessionmaker[AsyncSession],
@@ -165,13 +165,45 @@ async def test_get_my_room_returns_current_room(
     assert create_response.status_code == 201
     room_id = create_response.json()["room"]["id"]
 
-    my_room = await client.get("/rooms/me")
-    assert my_room.status_code == 200
-    assert my_room.json()["room"]["id"] == room_id
+    my_rooms = await client.get("/rooms/me")
+    assert my_rooms.status_code == 200
+    payload = my_rooms.json()
+    assert payload["rooms"], "ожидалась хотя бы одна комната"
+    assert payload["rooms"][0]["id"] == room_id
+    assert payload["rooms"][0]["status"] == "waiting"
+    assert payload["rooms"][0]["targetUserId"] == str(bob.id)
 
 
 @pytest.mark.asyncio
-async def test_get_my_room_returns_404_when_user_has_no_room(
+async def test_get_my_rooms_returns_waiting_for_invited_user(
+    client: AsyncClient,
+    user_factory,
+    sessionmaker: async_sessionmaker[AsyncSession],
+) -> None:
+    alice = await user_factory("alice", "alice@example.com", "Password123!")
+    bob = await user_factory("bob", "bob@example.com", "Password123!")
+
+    await _create_friendship(sessionmaker, alice.id, bob.id)
+    await _login(client, "alice")
+    create_response = await client.post("/rooms", json={"targetUserId": str(bob.id)})
+    assert create_response.status_code == 201
+    room_id = create_response.json()["room"]["id"]
+
+    await _login(client, "bob")
+    my_rooms = await client.get("/rooms/me")
+    assert my_rooms.status_code == 200
+    payload = my_rooms.json()
+    assert payload["rooms"], "ожидалась хотя бы одна комната"
+    room_payload = payload["rooms"][0]
+    assert room_payload["id"] == room_id
+    assert room_payload["status"] == "waiting"
+    assert room_payload["targetUserId"] == str(bob.id)
+    participant_ids = [participant["userId"] for participant in room_payload["participants"]]
+    assert str(alice.id) in participant_ids
+
+
+@pytest.mark.asyncio
+async def test_get_my_rooms_returns_empty_when_user_has_no_room(
     client: AsyncClient,
     user_factory,
     sessionmaker: async_sessionmaker[AsyncSession],
@@ -186,7 +218,8 @@ async def test_get_my_room_returns_404_when_user_has_no_room(
 
     await _login(client, "charlie")
     response = await client.get("/rooms/me")
-    assert response.status_code == 404
+    assert response.status_code == 200
+    assert response.json()["rooms"] == []
 
 
 @pytest.mark.asyncio

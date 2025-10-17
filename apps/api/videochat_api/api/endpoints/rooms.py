@@ -66,6 +66,7 @@ def _model_to_schema(room_model: RoomModel) -> RoomSchema:
         id=str(room_model.id),
         status=_coerce_enum(room_model.status, RoomStatusSchema),
         initiator_id=str(room_model.initiator_id),
+        target_user_id=str(room_model.target_user_id) if room_model.target_user_id is not None else None,
         created_at=room_model.created_at,
         updated_at=room_model.updated_at,
         closed_at=room_model.closed_at,
@@ -126,19 +127,15 @@ async def create_room(
     return RoomCreateResponse(room=room_schema)
 
 
-@router.get("/me", response_model=RoomStatusResponse)
-async def get_my_room(
+@router.get("/me", response_model=RoomsListResponse)
+async def get_my_rooms(
     db: AsyncSession = Depends(get_session_dependency),
     redis: Redis | None = Depends(get_redis),
     current_user: User = Depends(get_current_user),
-) -> RoomStatusResponse:
+) -> RoomsListResponse:
     service = _build_service(db, redis)
-    try:
-        room = await service.get_current_room_for_user(current_user.id)
-    except RoomNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-
-    return RoomStatusResponse(room=_model_to_schema(room))
+    rooms = await service.list_rooms_for_user(current_user.id)
+    return RoomsListResponse(rooms=[_model_to_schema(room) for room in rooms])
 
 
 @router.get("/{room_id}", response_model=RoomStatusResponse)
