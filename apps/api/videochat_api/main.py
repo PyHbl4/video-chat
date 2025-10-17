@@ -4,9 +4,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from redis.asyncio import from_url as redis_from_url
-from socketio import ASGIApp
 
 from videochat_api.api.routes import router as api_router
+from videochat_api.asgi import create_socketio_fastapi_app
 from videochat_api.config import settings
 from videochat_api.db.session import get_engine
 from videochat_api import models  # noqa: F401
@@ -52,7 +52,7 @@ def create_fastapi_app() -> FastAPI:
 
 fastapi_app = create_fastapi_app()
 
-app = ASGIApp(sio, other_asgi_app=fastapi_app)
+app = create_socketio_fastapi_app(fastapi_app, sio)
 
 
 def main() -> None:
