@@ -1,10 +1,12 @@
 README.md
 pyproject.toml
 tests/test_auth.py
+tests/test_docs.py
 tests/test_friends.py
 tests/test_rooms.py
 tests/test_users.py
 videochat_api/__init__.py
+videochat_api/asgi.py
 videochat_api/config.py
 videochat_api/dependencies.py
 videochat_api/main.py

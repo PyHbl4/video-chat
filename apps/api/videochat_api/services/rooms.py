@@ -290,8 +290,7 @@ class RoomService:
 
         state = inspect(room)
         for field in ("created_at", "updated_at", "closed_at"):
-            attr_state = state.attrs[field]
-            if attr_state.expired:
+            if field in state.expired_attributes:
                 await self._db.refresh(room, attribute_names=[field])
 
         self._normalize_room_enums(room)
