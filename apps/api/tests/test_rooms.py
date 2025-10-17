@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from types import SimpleNamespace
 import uuid
 
 import pytest
@@ -6,7 +7,12 @@ from httpx import AsyncClient
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 
+from videochat_api.api.endpoints.rooms import _model_to_schema
 from videochat_api.models import FriendRelationship, FriendStatus as FriendModelStatus, User
+from videochat_api.schemas import (
+    RoomParticipantRole as RoomParticipantRoleSchema,
+    RoomStatus as RoomStatusSchema,
+)
 from videochat_api.services.rooms import RoomService
 
 
@@ -284,6 +290,52 @@ async def test_join_room_activates_and_is_idempotent(
 
     joined_events_after = [event for event in emitted if event[0] == "room:user_joined"]
     assert len(joined_events_after) == emitted_count
+
+
+@pytest.mark.asyncio
+async def test_model_to_schema_accepts_string_enums(
+    app: FastAPI,
+    sessionmaker: async_sessionmaker[AsyncSession],
+    user_factory,
+) -> None:
+    alice = await user_factory("alice", "alice@example.com", "Password123!")
+    bob = await user_factory("bob", "bob@example.com", "Password123!")
+
+    await _create_friendship(sessionmaker, alice.id, bob.id)
+
+    async with sessionmaker() as session:
+        service = RoomService(session, app.state.redis)
+        initiator = await session.get(User, alice.id)
+        invitee = await session.get(User, bob.id)
+        assert initiator is not None
+        assert invitee is not None
+
+        room = await service.create_room(initiator, invitee)
+        room, _ = await service.join_room(room.id, invitee)
+
+        stringified_room = SimpleNamespace(
+            id=room.id,
+            status=room.status.value,
+            initiator_id=room.initiator_id,
+            created_at=room.created_at,
+            updated_at=room.updated_at,
+            closed_at=room.closed_at,
+            participants=[
+                SimpleNamespace(
+                    user_id=participant.user_id,
+                    role=participant.role.value,
+                    joined_at=participant.joined_at,
+                    left_at=participant.left_at,
+                )
+                for participant in room.participants
+            ],
+        )
+
+    schema = _model_to_schema(stringified_room)  # type: ignore[arg-type]
+
+    assert schema.status == RoomStatusSchema.ACTIVE
+    roles = {participant.role for participant in schema.participants}
+    assert roles == {RoomParticipantRoleSchema.INITIATOR, RoomParticipantRoleSchema.GUEST}
 
 
 @pytest.mark.asyncio
