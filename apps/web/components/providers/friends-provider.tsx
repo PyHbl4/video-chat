@@ -21,9 +21,6 @@ export function FriendsProvider({ children }: FriendsProviderProps) {
   const { friends } = useFriendsApi()
   const initializedUserRef = useRef<string | null>(null)
 
-  useFriendsRealtime({ enabled: Boolean(user?.id) })
-  useFriendsToasts()
-
   useEffect(() => {
     if (!user?.username) {
       initializedUserRef.current = null
@@ -45,6 +42,9 @@ export function FriendsProvider({ children }: FriendsProviderProps) {
 
     void loadRelationships(friends)
   }, [friends, hasLoaded, loadRelationships, user?.username])
+
+  useFriendsRealtime({ enabled: Boolean(user?.id) })
+  useFriendsToasts()
 
   return <>{children}</>
 }
