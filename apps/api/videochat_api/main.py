@@ -10,8 +10,12 @@ from videochat_api.asgi import create_socketio_fastapi_app
 from videochat_api.config import settings
 from videochat_api.db.session import get_engine
 from videochat_api import models  # noqa: F401
+from videochat_api.logging_config import configure_logging
 from videochat_api.services import PresenceService
 from videochat_api.websocket.server import bind_fastapi_app, sio
+
+
+configure_logging()
 
 
 @asynccontextmanager

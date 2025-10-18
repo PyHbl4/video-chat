@@ -29,55 +29,63 @@ Requires-Dist: httpx<0.28.0,>=0.27.0; extra == "dev"
 
 ## Обзор
 
-Video Chat API — асинхронное FastAPI-приложение, отвечающее за регистрацию и аутентификацию пользователей, управление дружбой, видеокомнатами и трансляцию статусов присутствия. Сервис объединяет REST-эндпоинты и Socket.IO-шлюз, использует PostgreSQL для хранения данных и Redis для кеширования комнат, трекинга присутствия и реализации rate limiting.
+Video Chat API — асинхронное FastAPI-приложение, объединяющее REST и Socket.IO для регистрации пользователей, управления дружбой и видеокомнатами, а также трансляции статусов присутствия. Сервис хранит данные в PostgreSQL, кеширует состояния в Redis и упакован в единое ASGI-приложение через адаптер `SocketIOFastAPIApp`, чтобы REST, Swagger и вебсокеты работали в одном процессе.
 
 ## Возможности
 
-- **Единый жизненный цикл приложения**: при запуске инициализируются подключение к БД, клиент Redis, HTTP-роуты и Socket.IO-сервер. 【F:apps/api/videochat_api/main.py†L17-L62】
-- **Гибкая конфигурация через `pydantic-settings`**: параметры БД, Redis, JWT и cookie-сессий берутся из переменных окружения. 【F:apps/api/videochat_api/config.py†L6-L44】
-- **Парольная аутентификация**: поддерживаются веб-сессии (cookie + CSRF) и сессии устройств (JWT + refresh). 【F:apps/api/videochat_api/api/endpoints/auth.py†L31-L259】【F:apps/api/videochat_api/auth/session.py†L36-L211】
-- **Система дружбы**: запрос, принятие, отклонение и оповещения друзей через REST и Socket.IO. 【F:apps/api/videochat_api/api/endpoints/friends.py†L19-L223】
-- **Поиск пользователей**: безопасный поиск по префиксу имени с фильтрацией заблокированных аккаунтов. 【F:apps/api/videochat_api/api/endpoints/users.py†L91-L132】
-- **Управление видеокомнатами**: создание, ручное присоединение через `POST /rooms/{room_id}/join`, просмотр статуса, выход, запрос текущей комнаты пользователя и админский список активных/ожидающих комнат. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L41-L198】
-- **Администрирование**: пользователи с флагом `is_admin` могут получать расширенный список пользователей (включая устройства и сессии) и контролировать комнаты. 【F:apps/api/videochat_api/models/user.py†L15-L24】【F:apps/api/videochat_api/api/endpoints/users.py†L27-L88】
-- **Rate limiting и presence**: Redis хранит лимиты логина и статусы онлайн, деградируя в безопасный режим при недоступности. 【F:apps/api/videochat_api/dependencies.py†L19-L43】【F:apps/api/videochat_api/services/presence.py†L16-L94】
+- **Единый жизненный цикл приложения.** `create_fastapi_app` настраивает FastAPI, CORS и подключает роутеры, а lifespan открывает подключения к БД/Redis и инициализирует `PresenceService`. `SocketIOFastAPIApp` делегирует `lifespan` FastAPI и проксирует HTTP/WebSocket-запросы в нужную часть приложения.
+- **Конфигурация через `pydantic-settings`.** Все параметры (PostgreSQL, Redis, JWT, cookie-сессии, CSRF) читаются из окружения и имеют dev-значения по умолчанию.
+- **Парольная аутентификация для веба и устройств.** Веб-путь устанавливает cookie + CSRF, device-путь возвращает access/refresh JWT, device identifier и связывает их с сущностями `Device` и `AuthSession`.
+- **Гибкая авторизация зависимостями.** `get_current_user` принимает Bearer-токены и cookie-сессии, проверяет блокировку пользователя и ревокацию сессий. Для админских действий есть `get_current_admin_user`.
+- **Дружба с уведомлениями.** REST-эндпоинты создают/принимают/отклоняют заявки, а Socket.IO уведомляет друзей в комнатах `user:{id}`. В ORM включены `passive_deletes`, поэтому удаление пользователя каскадно очищает дружбу.
+- **Комнаты видеозвонков.** `RoomService` проверяет дружбу, не допускает параллельных приглашений (`target_user_id`), синхронизирует участников и статусы `waiting/active/ending/closed`, а при необходимости деградирует до работы без Redis.
+- **Администрирование.** Администраторы получают списки пользователей с устройствами и сессиями, а также видят все активные/ожидающие комнаты.
+- **Юнит и интеграционные тесты.** Pytest-фикстуры поднимают приложение с in-memory SQLite и заглушкой Redis, покрывая аутентификацию, дружбу, комнаты, админские сценарии и удаление пользователей.
 
 ## Структура проекта
 
 ```
 apps/api/
-├── alembic/                     # Миграции БД (PostgreSQL)
-├── tests/                       # Набор pytest-тестов
+├── alembic/                     # Миграции БД
+├── httpx/                       # Конфигурация HTTP-клиентов для тестов
+├── knowledge/                   # Сводки об архитектуре и домене
+├── prompts/                     # Подсказки и ретроспективы по задачам
+├── tests/                       # Pytest-сценарии
 ├── videochat_api/
 │   ├── api/                     # FastAPI-роутеры и эндпоинты
-│   ├── auth/                    # Хеширование паролей, управление сессиями
-│   ├── db/                      # Настройка SQLAlchemy и сессий
-│   ├── models/                  # ORM-модели пользователей, устройств, сессий, друзей, комнат
-│   ├── schemas/                 # Pydantic-схемы ответов и запросов
-│   ├── services/                # Бизнес-логика (комнаты, дружба, presence, rate limiting)
-│   └── websocket/               # Интеграция Socket.IO
+│   ├── asgi.py                  # Адаптер FastAPI + Socket.IO
+│   ├── auth/                    # Пароли и менеджер сессий
+│   ├── db/                      # Создание движка и сессий SQLAlchemy
+│   ├── models/                  # ORM-модели пользователей, устройств, дружбы, комнат
+│   ├── schemas/                 # Pydantic-схемы запросов/ответов
+│   ├── services/                # Бизнес-логика (дружба, комнаты, presence, rate limiting)
+│   └── websocket/               # Socket.IO-сервер и пространства
 └── pyproject.toml               # Зависимости пакета
 ```
 
 ## Конфигурация
 
-Основные переменные окружения (значения по умолчанию приведены для dev-режима):
+Основные переменные окружения (dev-значения указаны по умолчанию):
 
 | Переменная | Назначение | Значение по умолчанию |
 | --- | --- | --- |
 | `APP_NAME` | Название сервиса | `Self-Hosted Video Chat API` |
 | `APP_VERSION` | Версия API | `0.0.1` |
-| `DATABASE_URL` | Строка подключения к PostgreSQL | `postgresql+psycopg://video:video@localhost:5432/videochat` |
-| `REDIS_URL` | Строка подключения к Redis | `redis://localhost:6379/0` |
-| `SESSION_SECRET` / `SESSION_COOKIE_NAME` / `SESSION_MAX_AGE_SECONDS` | Настройки cookie-сессий | `dev-secret` / `session` / `604800` |
-| `JWT_SECRET` / `JWT_ALGORITHM` / `ACCESS_TOKEN_TTL_SECONDS` / `REFRESH_TOKEN_TTL_SECONDS` | JWT и refresh-токены | `dev-jwt-secret` / `HS256` / `900` / `2592000` |
-| `LOGIN_RATE_LIMIT_ATTEMPTS` / `LOGIN_RATE_LIMIT_WINDOW_SECONDS` | Ограничения на логины | `5` / `60` |
+| `APP_ENV` | Тип окружения | `development` |
+| `DATABASE_URL` | Подключение к PostgreSQL | `postgresql+psycopg://video:video@localhost:5432/videochat` |
+| `REDIS_URL` | Подключение к Redis | `redis://localhost:6379/0` |
+| `SESSION_SECRET` / `SESSION_COOKIE_NAME` / `SESSION_MAX_AGE_SECONDS` | Cookie-сессии | `dev-secret` / `session` / `604800` |
+| `SESSION_COOKIE_SAMESITE` / `SESSION_COOKIE_SECURE` | Политика куки | `lax` / `false` |
+| `CSRF_HEADER_NAME` | Заголовок CSRF | `x-csrf-token` |
+| `LOGIN_RATE_LIMIT_ATTEMPTS` / `LOGIN_RATE_LIMIT_WINDOW_SECONDS` | Ограничения на логин | `5` / `60` |
+| `JWT_SECRET` / `JWT_ALGORITHM` | JWT-подпись | `dev-jwt-secret` / `HS256` |
+| `ACCESS_TOKEN_TTL_SECONDS` / `REFRESH_TOKEN_TTL_SECONDS` | TTL токенов | `900` / `2592000` |
 
-Полный список параметров находится в `videochat_api/config.py`. 【F:apps/api/videochat_api/config.py†L6-L41】
+Полный список смотрите в `videochat_api/config.py`. Для асинхронного движка используется автоматически сформированный `DATABASE_URL_ASYNC`.
 
 ## Локальная разработка
 
-1. **Установите зависимости**
+1. Установите Python 3.11 и зависимости:
    ```bash
    cd apps/api
    python3.11 -m venv .venv
@@ -85,104 +93,92 @@ apps/api/
    pip install --upgrade pip
    pip install -e .[dev]
    ```
-2. **Поднимите внешние сервисы**: PostgreSQL (БД `videochat`) и Redis.
-3. **Примените миграции**:
+2. Поднимите PostgreSQL и Redis (локально или через Docker). В репозитории есть готовый compose: `docker compose -f ../../infra/docker/docker-compose.dev.yml up -d`.
+3. Примените миграции:
    ```bash
    alembic upgrade head
    ```
-4. **Запустите сервер**:
+4. Запустите приложение:
    ```bash
    uvicorn videochat_api.main:app --host 0.0.0.0 --port 8000 --reload
    ```
-   Приложение поднимет REST и Socket.IO на едином адресе. 【F:apps/api/videochat_api/main.py†L55-L62】
-5. **Docker-окружение** (опционально): `docker compose -f ../../infra/docker/docker-compose.dev.yml up -d`
+   FastAPI и Socket.IO будут доступны по одному адресу; Swagger UI лежит на `/docs`.
 
 ## Тестирование
 
-Автотесты запускаются командой:
+- Все тесты выполняются командой `pytest` из каталога `apps/api`.
+- Фикстуры создают in-memory SQLite, подменяют `get_db_session`, возвращают `_FakeRedis` и отключают rate limiting.
+- Покрыты сценарии веб- и device-аутентификации, списков друзей, комнат (создание, join, leave, кеш Redis), админских эндпоинтов и удаления пользователей вместе с дружбами/комнатами.
 
-```bash
-pytest
-```
+## Проверка работоспособности вручную
 
-Тесты используют in-memory SQLite, фейковый Redis и проверяют сценарии аутентификации, дружбы, видеокомнат и админских эндпоинтов. 【F:apps/api/tests/conftest.py†L1-L118】【F:apps/api/tests/test_rooms.py†L1-L214】【F:apps/api/tests/test_users.py†L1-L94】
+1. **Подготовьте окружение.** Активируйте виртуальное окружение, запустите `uvicorn`, откройте Swagger UI (`http://localhost:8000/docs`).
+2. **Зарегистрируйте двух пользователей** через `POST /auth/register` и залогиньте каждого:
+   - веб-путь вернёт cookie и `csrf_token`; укажите его в заголовке `X-CSRF-Token` (значение берётся из `settings.csrf_header_name`).
+   - device-путь возвращает пару access/refresh токенов и `device_id`.
+3. **Установите дружбу.** Пользователь A вызывает `POST /friends/request`, пользователь B — `POST /friends/accept`. Socket.IO-клиент, подключённый к корневому namespace, получит события `friends:*` и `presence:update`.
+4. **Создайте комнату.** Под пользователем A вызовите `POST /rooms` с `targetUserId`. Ответ содержит `status=waiting`, инициатора и список участников. В комнату `user:{target}` отправляется событие `room:invited`.
+5. **Посмотрите списки комнат.** `GET /rooms/me` под инициатором и приглашённым вернёт созданную комнату со статусом `waiting`. Администратор через `GET /rooms` видит все активные и ожидающие комнаты.
+6. **Присоединитесь.** Пользователь B вызывает `POST /rooms/{roomId}/join`. Статус комнаты становится `active`, Socket.IO отправляет `room:user_joined` в пространство `video-room:{id}` и личные комнаты участников. Повторный вызов возвращает `changed=false`.
+7. **Завершите комнату.** Каждый участник вызывает `POST /rooms/{roomId}/leave`. После выхода последнего пользователя статус `closed`, Redis-ключ удаляется, а `GET /rooms/me` возвращает пустой список.
+8. **Удаление пользователя.** `DELETE /users/{id}` доступен владельцу или администратору. После ответа `204` все активные сессии, дружбы и участия в комнатах удаляются; повторные запросы возвращают 404.
 
-## Проверка работоспособности
+## База данных и миграции
 
-1. **Подготовьте окружение.** Активируйте виртуальное окружение, установите dev-зависимости (`pip install -e .[dev]`). Это добавит `httpx`, `pytest`, `aiosqlite` и другие инструменты для локального запуска. 【F:apps/api/pyproject.toml†L31-L49】
-2. **Запустите автотесты.** `pytest` создаёт временную БД, подменяет Redis и гоняет ключевые сценарии.
-3. **Ручная проверка комнат.** После запуска `uvicorn` откройте Swagger UI `http://localhost:8000/docs` и выполните последовательность:
-   1. **Создание тестовой пары.** Зарегистрируйте двух пользователей (`POST /auth/register`) и авторизуйте их по очереди (`POST /auth/login`). Убедитесь, что в ответе присутствуют cookie и CSRF-токен для веб-сессии.
-   2. **Установление дружбы.** Пользователь A отправляет заявку (`POST /friends/request`), пользователь B принимает её (`POST /friends/accept`). Проверяйте, что событие дружбы появляется в Socket.IO-комнатах `user:{id}` (можно отследить через подключённого клиента или логи тестового socket.io-клиента). 【F:apps/api/videochat_api/api/endpoints/friends.py†L33-L205】
-   3. **Создание комнаты.** Пользователь A вызывает `POST /rooms` с `target_user_id` равным идентификатору пользователя B. В ответе получите `room.id` и статус `waiting`. Сразу после этого в комнату `user:{target}` прилетает событие `room:invited` через Socket.IO. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L82-L118】
-      - Оставаясь под пользователем A, вызовите `GET /rooms/me` и убедитесь, что список содержит только что созданную комнату со статусом `waiting`.
-      - Авторизуйтесь под пользователем B и повторите `GET /rooms/me`. Эндпоинт должен вернуть приглашённую комнату, несмотря на отсутствие строки в `room_participants`.
-   4. **Подтверждение участия.** Под пользователем B выполните `POST /rooms/{room_id}/join`. Если запрос успешен, статус комнаты переключится на `active`, а в пространство `video-room:{room_id}` и личные комнаты участников отправится событие `room:user_joined`. Для надёжности повторите запрос — второй вызов должен вернуть `changed=false` (в теле `room` статус не меняется), что подтверждает идемпотентность. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L152-L198】
-   5. **Проверка просмотра статуса.** Пользователь A или B могут запросить `GET /rooms/{room_id}` и увидеть актуальный список участников. Посторонний пользователь получит `403 Forbidden`. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L120-L150】
-   6. **Закрытие сеанса.** Завершите проверку вызовом `POST /rooms/{room_id}/leave` от каждого участника. После выхода последнего пользователя статус перейдёт в `closed`, а событие `room:user_left` будет разослано подключённым клиентам. Для обоих участников `GET /rooms/me` должен вернуть пустой список. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L131-L198】
-   7. **Админский обзор.** Авторизуйтесь под администратором и запросите `GET /rooms`, чтобы убедиться, что закрытые комнаты не отображаются в списке активных, а ожидающие (если кто-то не присоединился) видны с правильным статусом. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L59-L79】
+Миграции лежат в `alembic/versions`:
 
-## Схема базы данных и миграции
+1. `20240912_000001_create_users_table` — пользователи.
+2. `20241005_000002_add_devices_and_sessions` — устройства и сессии.
+3. `20241005_000003_add_friends_table` — дружба.
+4. `20241005_000004_create_rooms_tables` — комнаты и участники.
+5. `20241010_000005_add_is_admin_to_users` — флаг администратора.
+6. `20241015_000006_add_target_user_to_rooms` — поле `target_user_id` и индекс для приглашений.
 
-Миграции лежат в `alembic/versions`. Последовательность включает:
-
-- создание таблицы пользователей; 【F:apps/api/alembic/versions/20240912_000001_create_users_table.py†L1-L37】
-- добавление устройств и сессий; 【F:apps/api/alembic/versions/20241005_000002_add_devices_and_sessions.py†L1-L89】
-- таблицу дружбы; 【F:apps/api/alembic/versions/20241005_000003_add_friends_table.py†L1-L68】
-- модели видеокомнат; 【F:apps/api/alembic/versions/20241005_000004_create_rooms_tables.py†L1-L85】
-- флаг `is_admin` у пользователей. 【F:apps/api/alembic/versions/20241010_000005_add_is_admin_to_users.py†L1-L35】
-
-После изменения моделей запускайте `alembic revision --autogenerate -m "message"` и проверяйте результат.
+После изменения моделей запускайте `alembic revision --autogenerate -m "message"` и проверяйте, что миграция соответствует ожиданиям.
 
 ## REST API
 
 | Метод | Путь | Описание |
 | --- | --- | --- |
-| `GET` | `/healthz` | Проверка готовности сервиса. 【F:apps/api/videochat_api/api/endpoints/system.py†L7-L10】 |
-| `POST` | `/auth/register` | Регистрация пользователя. |
-| `POST` | `/auth/login` | Аутентификация (cookie или устройство). |
-| `POST` | `/auth/refresh` | Ротация refresh-токена устройства. |
-| `POST` | `/auth/logout` | Выход из текущей сессии. |
-| `GET` | `/auth/me` | Профиль текущего пользователя (включая `isAdmin`). |
-| `GET` | `/users` | **Только админы.** Возвращает всех пользователей; параметр `include` позволяет добавить `devices` и `sessions`. 【F:apps/api/videochat_api/api/endpoints/users.py†L27-L88】 |
-| `GET` | `/users/search` | Поиск по имени. |
-| `GET` | `/friends` | Список дружеских связей. |
-| `POST` | `/friends/request` | Отправить заявку в друзья. |
-| `POST` | `/friends/accept` | Принять заявку. |
-| `POST` | `/friends/decline` | Отклонить заявку. |
-| `POST` | `/rooms` | Создать комнату и пригласить друга. |
-| `GET` | `/rooms` | **Только админы.** Список активных и ожидающих комнат. |
-| `GET` | `/rooms/me` | Список активных и ожидающих комнат пользователя. |
-| `GET` | `/rooms/{room_id}` | Получить статус комнаты по UUID. |
-| `POST` | `/rooms/{room_id}/leave` | Покинуть комнату. |
+| `GET` | `/healthz` | Простейшая проверка готовности.
+| `POST` | `/auth/register` | Регистрация нового пользователя.
+| `POST` | `/auth/login` | Вход по логину/email (веб или устройство).
+| `POST` | `/auth/refresh` | Ротация refresh-токена устройства.
+| `POST` | `/auth/logout` | Выход из текущей сессии (cookie или device).
+| `GET` | `/auth/me` | Профиль текущего пользователя.
+| `GET` | `/users` | **Админ.** Список пользователей с include=`devices`/`sessions`.
+| `GET` | `/users/search` | Поиск по username, исключая заблокированных и себя.
+| `DELETE` | `/users/{user_id}` | Удаление пользователя владельцем или админом.
+| `GET` | `/friends` | Список дружеских связей, фильтр по статусу.
+| `POST` | `/friends/request` | Отправка заявки в друзья.
+| `POST` | `/friends/accept` | Принятие заявки.
+| `POST` | `/friends/decline` | Отклонение заявки.
+| `POST` | `/rooms` | Создание комнаты и приглашение друга.
+| `GET` | `/rooms` | **Админ.** Список активных/ожидающих комнат.
+| `GET` | `/rooms/me` | Комнаты текущего пользователя (участие или приглашение).
+| `GET` | `/rooms/{room_id}` | Состояние комнаты для участника/друга инициатора.
+| `POST` | `/rooms/{room_id}/join` | Присоединение к комнате.
+| `POST` | `/rooms/{room_id}/leave` | Покинуть комнату.
 
-Все пользовательские и дружеские маршруты требуют аутентификации (cookie или `Authorization: Bearer`).
+Все запросы, кроме `/healthz` и `/auth/register`, требуют аутентификации.
 
-## Socket.IO-шлюз
+## Socket.IO
 
-Шлюз живёт в `videochat_api/websocket/server.py` и разделён на пространства:
-
-- **Корневой namespace** — авторизация по JWT или cookie+CSRF, публикация presence, рассылка обновлений друзьям. 【F:apps/api/videochat_api/websocket/server.py†L53-L188】
-- **`/rooms` namespace** — сигналинг WebRTC и чат между участниками комнаты: проверка членства, пересылка сообщений, обработка отключений. 【F:apps/api/videochat_api/websocket/server.py†L229-L342】
-
-## Роль администратора
-
-В модели пользователя добавлен флаг `is_admin`. Только админы могут:
-
-- вызывать `GET /users` с опциональными параметрами `include=devices`/`include=sessions`;
-- просматривать все комнаты через `GET /rooms`.
-
-Управление правами администратора осуществляется миграциями или скриптами, изменяющими поле `users.is_admin`.
+- **Корневой namespace (`/`).** Аутентифицирует соединения по access-токену или cookie+CSRF, обновляет `AuthSession.last_seen_at`, отмечает presence в Redis и рассылает события `presence:update`, `friends:*` и `room:*` в комнаты `user:{id}`.
+- **Namespace `/rooms`.** Требует `roomId` в payload, повторно использует авторизацию и `RoomService.join_room`. Подписывает клиента на `video-room:{roomId}` и пересылает события `room:state`, `room:user_joined`, `room:user_left`, `room:signal`, `room:message`.
+- Redis используется для TTL статусов и кеша активных комнат. При недоступности Redis приложение продолжает работать, но теряет rate limiting и быстрый presence.
 
 ## Соображения безопасности
 
-- Повторное использование refresh-токенов приводит к ревокации сессий. 【F:apps/api/videochat_api/api/endpoints/auth.py†L173-L259】
-- Для cookie-сессий обязательна передача заголовка CSRF при мутациях. 【F:apps/api/videochat_api/dependencies.py†L72-L97】
-- Redis-недоступность отключает rate limiting и presence; в логах появляется предупреждение, а операции продолжают выполняться. 【F:apps/api/videochat_api/dependencies.py†L25-L44】
-- Доступ к комнатам ограничен дружбой и текущим участием; админский эндпоинт только читает состояния. 【F:apps/api/videochat_api/services/rooms.py†L70-L167】【F:apps/api/videochat_api/api/endpoints/rooms.py†L41-L152】
+- Повторное использование refresh-токенов приводит к 401 и ревокации сессий.
+- Для cookie-сессий все мутации требуют CSRF-заголовка.
+- Заблокированным пользователям (`is_blocked=True`) автоматически отзываются сессии.
+- Эндпоинты комнат проверяют дружбу и участие; попытка параллельных приглашений завершается `409`.
+- Удаление пользователя удаляет связанные дружбы, устройства, сессии и участия благодаря каскадным связям и `passive_deletes`.
 
 ## Устранение неполадок
 
-- Проверьте корректность переменных окружения БД и Redis до запуска.
-- При ошибках авторизации удостоверьтесь, что передаются cookie, CSRF и актуальные JWT.
-- Если клиенты не получают presence/room-ивенты, убедитесь в доступности Redis и отсутствии ошибок Socket.IO в логах.
+- Проверьте переменные окружения БД/Redis и доступность сервисов перед запуском.
+- Если Redis недоступен, в логах появится предупреждение; presence и rate limiting переключатся в разрешающий режим.
+- Swagger UI использует тот же FastAPI-приложение, поэтому ошибки при открытии `/docs` обычно означают проблемы в зависимостях или неправильный `scope['app']` — убедитесь, что используется `videochat_api.main:app`.
+- Для трассировки Socket.IO включите логирование (`python -m socketio.client --logger debug`).
