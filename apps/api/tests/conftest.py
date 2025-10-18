@@ -6,7 +6,13 @@ from types import SimpleNamespace
 from typing import AsyncGenerator, Awaitable, Callable
 
 import pytest
+
 from httpx import AsyncClient
+
+
+@pytest.fixture(scope="module", params=["asyncio"])
+def anyio_backend(request: pytest.FixtureRequest) -> str:
+    return request.param
 
 pytest_plugins = ("pytest_asyncio_plugin",)
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine

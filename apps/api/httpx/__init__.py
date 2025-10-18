@@ -68,6 +68,7 @@ class Response:
             raise ValueError("No JSON body")
         return json.loads(self._body.decode("utf-8"))
 
+    @property
     def text(self) -> str:
         return self._body.decode("utf-8")
 
