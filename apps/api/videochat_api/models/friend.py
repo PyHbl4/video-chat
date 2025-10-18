@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, Enum, ForeignKey, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, backref
+
 
 from videochat_api.db.base import Base
 
@@ -52,8 +53,15 @@ class FriendRelationship(Base):
     responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     requester: Mapped["User"] = relationship(
-        "User", foreign_keys=[requester_id], backref="outgoing_friend_requests"
+        "User",
+        foreign_keys=[requester_id],
+        backref=backref("outgoing_friend_requests", passive_deletes=True),
+        passive_deletes=True,
     )
+
     addressee: Mapped["User"] = relationship(
-        "User", foreign_keys=[addressee_id], backref="incoming_friend_requests"
+        "User",
+        foreign_keys=[addressee_id],
+        backref=backref("incoming_friend_requests", passive_deletes=True),
+        passive_deletes=True,
     )

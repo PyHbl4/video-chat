@@ -1,6 +1,8 @@
 import pytest
 
-from videochat_api.models import User
+from sqlalchemy import select
+
+from videochat_api.models import FriendRelationship, User
 
 
 async def _login(client, identifier: str, password: str = "Password123!", **extra: object) -> None:
@@ -158,3 +160,37 @@ async def test_delete_user_invalid_identifier(client, user_factory) -> None:
 
     response = await client.delete("/users/invalid")
     assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_delete_user_with_friendships(client, user_factory, sessionmaker) -> None:
+    alice = await user_factory("alice", "alice@example.com", "Password123!")
+    bob = await user_factory("bob", "bob@example.com", "Password123!")
+
+    await _login(client, "alice")
+    request_response = await client.post("/friends/request", json={"targetUserId": str(bob.id)})
+    assert request_response.status_code == 202
+    request_id = request_response.json()["id"]
+
+    await _login(client, "bob")
+    accept_response = await client.post("/friends/accept", json={"requestId": request_id})
+    assert accept_response.status_code == 200
+
+    delete_response = await client.delete(f"/users/{bob.id}")
+    assert delete_response.status_code == 204
+
+    async with sessionmaker() as session:
+        assert await session.get(User, bob.id) is None
+
+        remaining_friendships = (
+            await session.execute(
+                select(FriendRelationship).where(
+                    (FriendRelationship.requester_id == alice.id)
+                    | (FriendRelationship.addressee_id == alice.id)
+                    | (FriendRelationship.requester_id == bob.id)
+                    | (FriendRelationship.addressee_id == bob.id)
+                )
+            )
+        ).scalars().all()
+
+        assert remaining_friendships == []
