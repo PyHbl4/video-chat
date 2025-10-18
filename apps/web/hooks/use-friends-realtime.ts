@@ -28,6 +28,16 @@ interface UseFriendsRealtimeOptions {
   enabled?: boolean
 }
 
+const isLoggingEnabled = process.env.NODE_ENV !== "production"
+
+function logFriendsRealtime(...args: unknown[]) {
+  if (!isLoggingEnabled) {
+    return
+  }
+
+  console.debug("[FriendsRealtime]", ...args)
+}
+
 export function useFriendsRealtime(options: UseFriendsRealtimeOptions = {}) {
   const { enabled = true } = options
   const { session } = useSession()
@@ -41,13 +51,19 @@ export function useFriendsRealtime(options: UseFriendsRealtimeOptions = {}) {
 
   useEffect(() => {
     if (!enabled) {
+      logFriendsRealtime("реалтайм отключен, не подключаем сокет")
       return
     }
 
+    logFriendsRealtime("инициализируем подключение сокета", {
+      hasAccessToken: Boolean(session.tokens.accessToken),
+      hasCsrfToken: Boolean(session.csrfToken)
+    })
     const token = session.tokens.accessToken
     const csrf = session.csrfToken
 
     setSocketStatus("connecting")
+    logFriendsRealtime("устанавливаем статус сокета", "connecting")
 
     const socket = io(env.client.apiBaseUrl, {
       transports: ["websocket"],
@@ -67,6 +83,7 @@ export function useFriendsRealtime(options: UseFriendsRealtimeOptions = {}) {
     socketRef.current = socket
 
     const handleConnect = () => {
+      logFriendsRealtime("сокет подключен")
       setSocketStatus("connected")
       pushNotification({
         kind: "success",
@@ -75,11 +92,13 @@ export function useFriendsRealtime(options: UseFriendsRealtimeOptions = {}) {
     }
 
     const handleDisconnect = () => {
+      logFriendsRealtime("сокет отключен")
       setSocketStatus("disconnected")
     }
 
     const handleError = (error: Error) => {
       console.error("[friends] socket error", error)
+      logFriendsRealtime("ошибка сокета", error.message)
       setSocketStatus("error")
       pushNotification({
         kind: "error",
@@ -113,6 +132,7 @@ export function useFriendsRealtime(options: UseFriendsRealtimeOptions = {}) {
     })
 
     return () => {
+      logFriendsRealtime("отключаем сокет и снимаем обработчики")
       socket.off("connect", handleConnect)
       socket.off("disconnect", handleDisconnect)
       socket.off("connect_error", handleError)
@@ -124,5 +144,15 @@ export function useFriendsRealtime(options: UseFriendsRealtimeOptions = {}) {
       socket.disconnect()
       socketRef.current = null
     }
-  }, [enabled, session.tokens.accessToken, session.csrfToken, setSocketStatus, handlePresenceUpdate, handleAccepted, handleRequest, handleDecline, pushNotification])
+  }, [
+    enabled,
+    session.tokens.accessToken,
+    session.csrfToken,
+    setSocketStatus,
+    handlePresenceUpdate,
+    handleAccepted,
+    handleRequest,
+    handleDecline,
+    pushNotification
+  ])
 }
