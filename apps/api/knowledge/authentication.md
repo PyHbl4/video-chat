@@ -1,10 +1,13 @@
 # Аутентификация и сессии
-- **Регистрация**: `/auth/register` принимает username/email/password, проверяет уникальность и хеширует пароль через `hash_password`. 【F:apps/api/videochat_api/api/endpoints/auth.py†L31-L75】
-- **Вход**: `/auth/login` поддерживает две ветки:
-  - Web: создаёт запись `AuthSession` c `SessionKind.WEB`, генерирует cookie + CSRF и выставляет их в ответе. 【F:apps/api/videochat_api/api/endpoints/auth.py†L130-L170】【F:apps/api/videochat_api/auth/session.py†L74-L126】
-  - Device: использует `DeviceInfo`, создаёт/обновляет запись `Device`, выдаёт JWT access + refresh токены и device identifier. 【F:apps/api/videochat_api/api/endpoints/auth.py†L139-L170】【F:apps/api/videochat_api/auth/session.py†L128-L182】
-- **Rate limiting**: перед логином обращается к `RateLimiter`. При сбое Redis включается `NullRateLimiter`. 【F:apps/api/videochat_api/api/endpoints/auth.py†L88-L117】【F:apps/api/videochat_api/dependencies.py†L25-L44】
-- **Refresh**: `/auth/refresh` ищет сессию по хешу refresh-токена, проверяет устройство и блокировки пользователя, затем вызывает `rotate_refresh_token`. 【F:apps/api/videochat_api/api/endpoints/auth.py†L173-L214】【F:apps/api/videochat_api/auth/session.py†L184-L211】
-- **Выход**: `/auth/logout` валидирует CSRF (для web) или refresh (для устройств) и помечает сессию отозванной. Cookie удаляется. 【F:apps/api/videochat_api/api/endpoints/auth.py†L217-L259】
-- **Текущий пользователь**: зависимость `get_current_user` извлекает токен из заголовка или cookie, проверяет ревокацию и блокировку пользователя, обновляет `last_seen`. 【F:apps/api/videochat_api/dependencies.py†L47-L97】
-- **Практика ручной проверки**: для всех запросов комнат, выполняемых через Swagger UI, сначала получите CSRF-токен из ответа `/auth/login` и указывайте его в заголовке `X-CSRF-Token`. Без него `POST /rooms`, `/rooms/{room_id}/join` и `/rooms/{room_id}/leave` вернут 403 даже при валидной cookie-сессии. 【F:apps/api/videochat_api/api/endpoints/auth.py†L217-L259】【F:apps/api/videochat_api/api/endpoints/rooms.py†L82-L198】
+
+- **Регистрация (`POST /auth/register`).** Проверяет уникальность username/email, хеширует пароль и создаёт запись `User` с временными метками.
+- **Логин (`POST /auth/login`).**
+  - **Веб-сценарий.** Создаёт `AuthSession` с `SessionKind.WEB`, выдаёт httpOnly cookie и CSRF-токен. Ответ содержит `csrf_token` и TTL сессии. Все дальнейшие мутации требуют заголовок `X-CSRF-Token`.
+  - **Устройства.** Ожидает `device.kind` (`desktop` или `tauri`), создаёт/обновляет `Device`, генерирует refresh-token (хранится хеш) и возвращает access/refresh JWT + `device_id`.
+  - Перед проверкой пароля вызывается rate limiter по IP. При недоступности Redis лимиты пропускаются, но логируются предупреждения.
+- **Текущий пользователь (`GET /auth/me`).** Зависимость `get_current_user` принимает Bearer-токен (access) или cookie-сессию, проверяет блокировку пользователя, обновляет `AuthSession.last_seen_at` через `session_manager.touch` и сохраняет найденную сессию в `request.state`.
+- **Ротация (`POST /auth/refresh`).** Находит сессию по refresh-токену, проверяет устройство и блокировку пользователя, генерирует новые access/refresh токены. Повторное использование старого refresh приводит к 401 и отзыву сессии.
+- **Выход (`POST /auth/logout`).** Для web проверяет CSRF и удаляет cookie. Для устройств требует актуальный refresh-токен. В обоих случаях `session_manager.revoke_session` очищает хеши и помечает сессию отозванной.
+- **Административные права.** Поле `is_admin` в модели пользователя выдаётся в `UserResponse` (alias `isAdmin`). `get_current_admin_user` возвращает 403, если пользователь не администратор.
+- **Удаление пользователя.** `DELETE /users/{id}` доступен владельцу или администратору. Перед удалением вызывается `session_manager.revoke_user_sessions`, что отзывает все активные сессии и устройства. Благодаря каскадам удаляются дружбы, комнаты и участия.
+- **Тесты.** `tests/test_auth.py` покрывает веб- и device-путь, ротацию токенов и корректный логаут. Дополнительные проверки в `tests/test_users.py` удостоверяются, что удаление аннулирует сессии.

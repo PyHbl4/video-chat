@@ -1,9 +1,10 @@
 # Присутствие и Socket.IO
-- **PresenceService**: хранит статусы в Redis с TTL (по умолчанию 120 секунд), умеет выставлять online/offline, продлевать TTL и массово читать статусы. Использует сериализацию в JSON и ISO8601 даты. 【F:apps/api/videochat_api/services/presence.py†L1-L94】
-- **Socket.IO сервер**: создаётся в `websocket/server.py`, делит подключённых пользователей по комнатам вида `user:{id}` и обновляет presence.
-  1. Авторизует соединение по JWT access токену или паре cookie + CSRF, используя `SessionService` и БД. 【F:apps/api/videochat_api/websocket/server.py†L53-L115】
-  2. При первом соединении помечает пользователя online, рассылает событие `presence:update` друзьям и отправляет снапшот состояний новому клиенту. 【F:apps/api/videochat_api/websocket/server.py†L117-L177】
-  3. Периодически обновляет TTL через фоновые таски `_schedule_presence_refresh`, пока есть активные соединения. 【F:apps/api/videochat_api/websocket/server.py†L147-L177】
-  4. На отключении снимает подписки, отменяет таск и публикует offline, если это был последний клиент. 【F:apps/api/videochat_api/websocket/server.py†L189-L218】
-- **Интеграция с REST**: состояния presence используются дружескими событиями (accept/decline/request), которые эмитятся через `sio.emit` в соответствующие комнаты. 【F:apps/api/videochat_api/api/endpoints/friends.py†L33-L66】【F:apps/api/videochat_api/api/endpoints/friends.py†L109-L205】
-- **Связь с комнатами**: namespace `/rooms` повторно использует presence-комнаты `user:{id}` для доставки событий `room:invited`, `room:user_joined` и `room:user_left`. При ручной проверке можно держать подключённого Socket.IO-клиента, чтобы отслеживать эти события в реальном времени. 【F:apps/api/videochat_api/websocket/server.py†L229-L342】【F:apps/api/videochat_api/api/endpoints/rooms.py†L82-L198】
+
+- **PresenceService.** Хранит статусы пользователей в Redis по ключу `presence:user:{id}` и TTL (по умолчанию 120 секунд). Методы `set_online`, `set_offline`, `refresh_online`, `get_status` и `get_many_statuses` работают с ISO8601-датами. При недоступности Redis PresenceService не создаётся, но приложение продолжает работать.
+- **Подписка друзей.** При подключении Socket.IO корневой namespace авторизует пользователя, ставит его online и рассылает `presence:update` всем друзьям. Затем отправляется снимок статусов друзей новому клиенту. Фоновая задача `_schedule_presence_refresh` обновляет TTL, пока остаются активные соединения.
+- **Разрыв соединения.** Когда последний сокет пользователя отключается, presence помечается offline, фоновая задача отменяется, а друзьям отправляется `presence:update` со статусом `offline`.
+- **Комнаты Socket.IO.**
+  - Комнаты `user:{id}` используются для событий presence и дружбы (`friends:*`, `room:invited`, `room:user_joined`, `room:user_left`).
+  - Namespace `/rooms` добавляет клиента в `video-room:{roomId}`, рассылая сигналы WebRTC (`room:signal`) и сообщения (`room:message`). При авторизации namespace повторно вызывает `RoomService.join_room`, поэтому REST и WebSocket держат единое состояние.
+- **Интеграция с Redis.** RoomService пишет состояние комнат в Redis, чтобы фронтенд быстрее обновлялся, а Socket.IO использует те же данные для нотификаций. При недоступном Redis кэш и rate limiting отключаются, но REST/Socket.IO продолжают работать напрямую с БД.
+- **Тесты.** Фикстуры в `tests/conftest.py` заменяют Redis на `_FakeRedis`, что позволяет детерминированно проверять события дружбы и комнат. Для проверки presence можно инспектировать `PresenceService._redis._store` или отслеживать события Socket.IO.
