@@ -69,6 +69,7 @@ class Room(Base):
         back_populates="room",
         cascade="all, delete-orphan",
         order_by="RoomParticipant.joined_at",
+        passive_deletes=True,
     )
 
 
@@ -100,5 +101,13 @@ class RoomParticipant(Base):
     )
     left_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    room: Mapped["Room"] = relationship("Room", back_populates="participants")
-    user: Mapped["User"] = relationship("User", backref="room_participations")
+    room: Mapped["Room"] = relationship(
+        "Room",
+        back_populates="participants",
+        passive_deletes=True,
+    )
+    user: Mapped["User"] = relationship(
+        "User",
+        back_populates="room_participations",
+        passive_deletes=True,
+    )

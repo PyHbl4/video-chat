@@ -26,7 +26,13 @@ class User(Base):
     sessions: Mapped[list["AuthSession"]] = relationship(
         "AuthSession", back_populates="user", cascade="all, delete-orphan"
     )
-
+    room_participations: Mapped[list["RoomParticipant"]] = relationship(
+        "RoomParticipant",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
 from .device import Device  # noqa: E402
 from .session import AuthSession  # noqa: E402
+from .room import RoomParticipant  # noqa: E402

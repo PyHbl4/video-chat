@@ -1,8 +1,9 @@
 import pytest
+import uuid
 
 from sqlalchemy import select
 
-from videochat_api.models import FriendRelationship, User
+from videochat_api.models import FriendRelationship, Room, RoomParticipant, User
 
 
 async def _login(client, identifier: str, password: str = "Password123!", **extra: object) -> None:
@@ -194,3 +195,66 @@ async def test_delete_user_with_friendships(client, user_factory, sessionmaker) 
         ).scalars().all()
 
         assert remaining_friendships == []
+
+
+@pytest.mark.asyncio
+async def test_delete_user_with_room_participation(
+    client,
+    user_factory,
+    sessionmaker,
+    monkeypatch,
+) -> None:
+    alice = await user_factory("alice-room", "alice-room@example.com", "Password123!")
+    bob = await user_factory("bob-room", "bob-room@example.com", "Password123!")
+
+    await _login(client, "alice-room")
+    request_response = await client.post(
+        "/friends/request",
+        json={"targetUserId": str(bob.id)},
+    )
+    assert request_response.status_code == 202
+    request_id = request_response.json()["id"]
+
+    await _login(client, "bob-room")
+    accept_response = await client.post(
+        "/friends/accept",
+        json={"requestId": request_id},
+    )
+    assert accept_response.status_code == 200
+
+    await _login(client, "alice-room")
+
+    async def _stub_emit(*args, **kwargs):  # pragma: no cover - побочный эффект не проверяется
+        return None
+
+    monkeypatch.setattr("videochat_api.api.endpoints.rooms.sio.emit", _stub_emit)
+
+    create_response = await client.post(
+        "/rooms",
+        json={"targetUserId": str(bob.id)},
+    )
+    assert create_response.status_code == 201
+    room_id = create_response.json()["room"]["id"]
+
+    delete_response = await client.delete(f"/users/{alice.id}")
+    assert delete_response.status_code == 204
+
+    async with sessionmaker() as session:
+        assert await session.get(User, alice.id) is None
+
+        room_uuid = uuid.UUID(room_id)
+        assert await session.get(Room, room_uuid) is None
+
+        remaining_participants = (
+            await session.execute(
+                select(RoomParticipant).where(RoomParticipant.room_id == room_uuid)
+            )
+        ).scalars().all()
+        assert remaining_participants == []
+
+        bob_participations = (
+            await session.execute(
+                select(RoomParticipant).where(RoomParticipant.user_id == bob.id)
+            )
+        ).scalars().all()
+        assert bob_participations == []
