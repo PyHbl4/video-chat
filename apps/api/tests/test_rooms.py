@@ -113,6 +113,28 @@ async def test_room_status_available_for_invited_friend(
 
 
 @pytest.mark.asyncio
+async def test_room_status_forbidden_for_friend_without_invite(
+    client: AsyncClient,
+    user_factory,
+    sessionmaker: async_sessionmaker[AsyncSession],
+) -> None:
+    alice = await user_factory("alice", "alice@example.com", "Password123!")
+    bob = await user_factory("bob", "bob@example.com", "Password123!")
+    carol = await user_factory("carol", "carol@example.com", "Password123!")
+
+    await _create_friendship(sessionmaker, alice.id, bob.id)
+    await _create_friendship(sessionmaker, alice.id, carol.id)
+
+    await _login(client, "alice")
+    create_response = await client.post("/rooms", json={"targetUserId": str(bob.id)})
+    room_id = create_response.json()["room"]["id"]
+
+    await _login(client, "carol")
+    forbidden = await client.get(f"/rooms/{room_id}")
+    assert forbidden.status_code == 403
+
+
+@pytest.mark.asyncio
 async def test_room_status_forbidden_for_non_friend(
     client: AsyncClient,
     user_factory,
@@ -130,6 +152,31 @@ async def test_room_status_forbidden_for_non_friend(
     await _login(client, "eve")
     forbidden = await client.get(f"/rooms/{room_id}")
     assert forbidden.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_room_status_available_for_admin(
+    client: AsyncClient,
+    user_factory,
+    sessionmaker: async_sessionmaker[AsyncSession],
+) -> None:
+    admin = await user_factory("admin", "admin@example.com", "Password123!", is_admin=True)
+    alice = await user_factory("alice", "alice@example.com", "Password123!")
+    bob = await user_factory("bob", "bob@example.com", "Password123!")
+
+    await _create_friendship(sessionmaker, alice.id, bob.id)
+
+    await _login(client, "alice")
+    create_response = await client.post("/rooms", json={"targetUserId": str(bob.id)})
+    room_id = create_response.json()["room"]["id"]
+
+    await _login(client, "admin")
+    admin_response = await client.get(f"/rooms/{room_id}")
+    assert admin_response.status_code == 200
+    payload = admin_response.json()["room"]
+    assert payload["id"] == room_id
+    participant_ids = [participant["userId"] for participant in payload["participants"]]
+    assert str(alice.id) in participant_ids
 
 
 @pytest.mark.asyncio

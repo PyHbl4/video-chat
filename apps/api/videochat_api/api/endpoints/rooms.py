@@ -152,7 +152,11 @@ async def get_room_status(
 
     service = _build_service(db, redis)
     try:
-        room = await service.get_room_for_user(room_uuid, current_user.id)
+        room = await service.get_room_for_user(
+            room_uuid,
+            current_user.id,
+            is_admin=current_user.is_admin,
+        )
     except RoomNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except RoomForbiddenError as exc:
