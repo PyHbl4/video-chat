@@ -1,18 +1,20 @@
 # Архитектура сервиса
 
 ## Основные компоненты
-- **Входная точка**: `videochat_api/main.py` создаёт FastAPI-приложение, подключает CORS, регистрирует роутеры и оборачивает их в Socket.IO ASGI-слой. В лайфспане открываются подключения к БД и Redis, после чего инициализируются сервисы присутствия и комнат. 【F:apps/api/videochat_api/main.py†L17-L62】
-- **Роутинг**: `api/routes.py` объединяет системные, auth, user, friends и rooms эндпоинты. Каждая группа живёт в отдельном модуле внутри `api/endpoints`, что облегчает изоляцию зависимостей. 【F:apps/api/videochat_api/api/routes.py†L1-L15】
-- **Конфигурация**: `config.py` использует `BaseSettings` для переменных окружения, вычисляет адреса БД/Redis и управляет параметрами CSRF. 【F:apps/api/videochat_api/config.py†L6-L44】
-- **Доступ к данным**: `db/session.py` лениво создаёт AsyncEngine/SessionMaker на базе `DATABASE_URL` и экспонирует генератор `get_db_session`. Его используют все REST-эндпоинты. 【F:apps/api/videochat_api/db/session.py†L1-L39】
-- **Модели**: ORM-слой включает пользователей, устройства, сессии, дружбу и видеокомнаты. Комнаты описаны в `models/room.py` и связаны с участниками через таблицу `room_participants`. 【F:apps/api/videochat_api/models/user.py†L1-L34】【F:apps/api/videochat_api/models/room.py†L1-L82】
+- **ASGI-слой.** `videochat_api/main.py` создаёт FastAPI-приложение, подключает CORS, регистрирует REST-роутеры и через lifespan открывает подключения к БД и Redis. Полученные клиенты кладутся в `app.state`, а `PresenceService` переиспользуется вебсокетами.
+- **Адаптер Socket.IO.** `videochat_api/asgi.py` реализует `SocketIOFastAPIApp`, который делегирует `lifespan` во внутренний FastAPI, а HTTP/WebSocket-запросы отправляет либо в Socket.IO (`/socket.io`), либо обратно в FastAPI. Это избавляет от падений Swagger и обеспечивает корректный `scope['app']` внутри запросов.
+- **Роутинг.** `api/routes.py` собирает подроутеры `system`, `auth`, `users`, `friends` и `rooms`. Каждый модуль использует зависимости для доступа к сессии БД, Redis и текущему пользователю.
+- **Конфигурация.** `config.py` наследует `BaseSettings`, читает `.env`, предоставляет свойства `database_url_async`, `csrf_header`, `session_samesite` и общие TTL для токенов.
+- **База данных.** `db/session.py` лениво создаёт `AsyncEngine`/`async_sessionmaker` и выдаёт генератор `get_db_session`. В ORM (`models/*`) объявлены пользователи, устройства, сессии, дружба, комнаты и участники. Все связи используют `passive_deletes`, чтобы каскады сработали при удалении пользователя.
 
 ## Сервисный уровень
-- **FriendshipService** отвечает за проверку взаимных заявок и выборку друзей для уведомлений. 【F:apps/api/videochat_api/services/friendships.py†L1-L73】
-- **PresenceService** работает поверх Redis: хранит TTL присутствия, рассылает события Socket.IO и обеспечивает деградацию при недоступности Redis. 【F:apps/api/videochat_api/services/presence.py†L16-L94】
-- **RoomService** управляет созданием комнат, проверкой дружбы, присоединением/выходом участников и синхронизацией состояния в Redis. REST-эндпоинты используют его для `create_room`, `join_room`, `leave_room` и выборки комнат. 【F:apps/api/videochat_api/services/rooms.py†L44-L218】
-- **RateLimiter** защищает логин от перебора паролей, переключаясь в `NullRateLimiter` при недоступном Redis. 【F:apps/api/videochat_api/services/rate_limiter.py†L1-L52】
+- **SessionService.** Создаёт cookie- и device-сессии, хеширует токены, выдаёт JWT через PyJWT, обновляет `last_seen_at` и умеет отзывать сессии/устройства пачкой.
+- **Friendships.** `services/friendships.py` предоставляет функции выборки дружеских связей, поиска взаимных заявок и получения идентификаторов друзей. Используется в REST и Socket.IO.
+- **RoomService.** Управляет жизненным циклом комнат: проверяет дружбу, блокирует параллельные приглашения через `_ensure_user_is_free` и `target_user_id`, ведёт список участников, синхронизирует Redis (ключи `room:{id}` и `room:{id}:participants`) и нормализует enum-поля, чтобы избежать проблем с PostgreSQL.
+- **PresenceService.** Хранит статусы онлайн/офлайн в Redis с TTL, обновляет их по таймеру и позволяет получить снапшот для друзей.
+- **Rate limiting.** `RedisRateLimiter` инкрементирует счётчик логинов по IP, а `NullRateLimiter` используется при недоступном Redis.
 
 ## Реактивный слой
-- **Socket.IO сервер** (`websocket/server.py`) обслуживает корневой namespace и `/rooms`. Корневой отвечает за presence и дружбу, namespace комнат маршрутизирует сообщения сигналинга и уведомляет участников о событиях `room:user_joined`/`room:user_left`. 【F:apps/api/videochat_api/websocket/server.py†L53-L342】
-- События REST-слоя (например, создание комнаты) инициируют отправку событий в Socket.IO через общий объект `sio`, поэтому важно держать схему payload синхронной между REST и WebSocket-клиентами. 【F:apps/api/videochat_api/api/endpoints/rooms.py†L82-L198】
+- **Корневой Socket.IO.** Авторизует по access-токену или cookie+CSRF, отмечает пользователя online, рассылает `presence:update` друзьям, поддерживает keepalive задачей `_schedule_presence_refresh` и уведомляет через `friends:*`/`room:*` события.
+- **Namespace `/rooms`.** Проверяет `roomId`, повторно авторизует пользователя, вызывает `RoomService.join_room`, добавляет клиента в комнату `video-room:{id}` и пересылает сигналы WebRTC (`room:signal`), сообщения (`room:message`) и уведомления о входе/выходе.
+- **Интеграция с REST.** Эндпоинты комнат и дружбы используют общий `sio` для отправки событий пользователям; кэш Redis помогает фронтенду отображать состояние без дополнительных запросов.

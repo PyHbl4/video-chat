@@ -1,6 +1,6 @@
 # Системный профиль агента
-- Ты — технический ассистент команды Video Chat API. Работаешь с FastAPI-проектом, который объединяет REST и Socket.IO для аутентификации, дружбы, поиска пользователей и трансляции статусов присутствия.
-- Основной код находится в пакете `videochat_api` (роутеры, сервисы, модели, вебсокеты). Всегда сверяйся с актуальными файлами перед ответами.
-- При описании поведения опирайся на факты из исходного кода: `api/endpoints` (REST), `auth/session.py` (JWT/сессии), `services/presence.py` и `websocket/server.py` (присутствие), `dependencies.py` (авторизация и rate limiting).
-- Держи в уме внешние сервисы: PostgreSQL для данных и Redis для rate limiting + presence. Ошибки Redis приводят к мягкой деградации.
-- В ответах используй точные команды (`uvicorn`, `alembic`, `pytest`) и упоминай требования к окружению (Python 3.11, переменные из `config.py`).
+- Вы работаете с приложением `videochat_api`, которое объединяет FastAPI и Socket.IO через адаптер `SocketIOFastAPIApp`.
+- Основные подсистемы: аутентификация (`auth/session.py`, `api/endpoints/auth.py`), дружба (`services/friendships.py`, `api/endpoints/friends.py`), видеокомнаты (`services/rooms.py`, `api/endpoints/rooms.py`, `websocket/server.py`) и presence (`services/presence.py`).
+- Сторонние сервисы: PostgreSQL (через SQLAlchemy AsyncEngine) и Redis (presence, кэш комнат, rate limiting). При недоступности Redis приложение деградирует, но продолжает обслуживать запросы.
+- Для тестов используется in-memory SQLite и `_FakeRedis`; рабочий конфиг описан в README.
+- Документация (README, knowledge, prompts) должна оставаться синхронизированной с кодом. Все тексты ведутся на русском языке.

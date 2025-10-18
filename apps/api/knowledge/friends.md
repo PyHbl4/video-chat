@@ -1,11 +1,12 @@
 # Дружба и уведомления
-- **Модель**: `FriendRelationship` хранит пару `requester/addressee`, Enum-статус (`pending/accepted/declined/blocked`) и временные метки создания/ответа. Уникальность пары гарантируется `UniqueConstraint`. 【F:apps/api/videochat_api/models/friend.py†L1-L44】
-- **Сервисы**: `services/friendships.py` предоставляет выборку списков, поиск взаимной заявки и получение идентификаторов друзей, что используется в REST и Socket.IO. 【F:apps/api/videochat_api/services/friendships.py†L1-L73】
-- **REST-потоки**:
-  - `GET /friends` — возвращает список с optional фильтром по статусу. 【F:apps/api/videochat_api/api/endpoints/friends.py†L61-L92】
-  - `POST /friends/request` — создаёт новую заявку или возвращает существующую, предотвращая дубликаты и уведомляя адресата. 【F:apps/api/videochat_api/api/endpoints/friends.py†L95-L157】
-  - `POST /friends/accept` — разрешено только адресату; обновляет статус и шлёт уведомление обеим сторонам. 【F:apps/api/videochat_api/api/endpoints/friends.py†L160-L199】
-  - `POST /friends/decline` — меняет статус на `declined` и уведомляет отправителя. 【F:apps/api/videochat_api/api/endpoints/friends.py†L202-L223】
-- **WebSocket**: при подключении пользователя грузятся идентификаторы друзей в статусе `accepted`, чтобы обновлять их присутствие. 【F:apps/api/videochat_api/websocket/server.py†L97-L112】
-- **Интеграция с комнатами**: `RoomService` использует `FriendshipService.get_friend_user_ids`, чтобы удостовериться, что инициатор и приглашённый состоят в дружбе. Это критично при ручной проверке: без принятой заявки `POST /rooms` вернёт 403. 【F:apps/api/videochat_api/services/rooms.py†L145-L191】
-- **Тесты**: сценарии дружбы extensively покрыты unit-тестами с monkeypatch для Socket.IO (`test_friends.py`), а также участвуют в интеграционном тесте комнат, где проверяется активация комнаты и рассылка событий. 【F:apps/api/tests/test_friends.py†L1-L129】【F:apps/api/tests/test_rooms.py†L1-L214】
+
+- **Модель.** `FriendRelationship` хранит `requester/addressee`, статус (`pending/accepted/declined/blocked`), временные метки и уникальную комбинацию пользователей. Связи используют `passive_deletes`, поэтому удаление пользователя не приводит к `IntegrityError` — каскад очищает заявки автоматически.
+- **Сервисы.** `services/friendships.py` предоставляет функции `list_friendships`, `find_mutual_friendship`, `get_friend_user_ids`. Они используются в REST-эндпоинтах и Socket.IO, чтобы определять доступ к комнатам и рассылку уведомлений.
+- **REST-эндпоинты.**
+  - `GET /friends` — возвращает список дружеских связей, опционально фильтруя по статусу.
+  - `POST /friends/request` — создаёт новую заявку или переиспользует существующую взаимную. При успехе отправляет событие `friends:request` адресату.
+  - `POST /friends/accept` — доступен только адресату, переводит статус в `accepted`, уведомляет обе стороны (`friends:accepted`).
+  - `POST /friends/decline` — переводит статус в `declined` и уведомляет инициатора (`friends:declined`).
+- **Socket.IO.** При подключении пользователя сервер подгружает идентификаторы друзей со статусом `accepted`, чтобы рассылать `presence:update`. Все события дружбы публикуются в комнаты `user:{id}`.
+- **Интеграция с комнатами.** `RoomService` обращается к `get_friend_user_ids`, чтобы убедиться, что инициатор и целевой пользователь — друзья. Без принятой заявки `POST /rooms` вернёт 403. При выходе/удалении пользователя дружбы очищаются каскадом.
+- **Тесты.** `tests/test_friends.py` покрывает все сценарии: создание заявки, фильтрацию, приём/отклонение, повторные запросы и сериализацию событий Socket.IO. Дополнительные проверки при удалении пользователя лежат в `tests/test_users.py`.
