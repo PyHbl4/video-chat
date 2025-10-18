@@ -55,12 +55,22 @@ export function useFriendsRealtime(options: UseFriendsRealtimeOptions = {}) {
       return
     }
 
-    logFriendsRealtime("инициализируем подключение сокета", {
-      hasAccessToken: Boolean(session.tokens.accessToken),
-      hasCsrfToken: Boolean(session.csrfToken)
-    })
     const token = session.tokens.accessToken
     const csrf = session.csrfToken
+
+    if (!token && !csrf) {
+      logFriendsRealtime("пропускаем подключение: нет данных для авторизации", {
+        hasAccessToken: Boolean(token),
+        hasCsrfToken: Boolean(csrf)
+      })
+      setSocketStatus("idle")
+      return
+    }
+
+    logFriendsRealtime("инициализируем подключение сокета", {
+      hasAccessToken: Boolean(token),
+      hasCsrfToken: Boolean(csrf)
+    })
 
     setSocketStatus("connecting")
     logFriendsRealtime("устанавливаем статус сокета", "connecting")
@@ -73,11 +83,7 @@ export function useFriendsRealtime(options: UseFriendsRealtimeOptions = {}) {
       reconnectionAttempts: Infinity,
       reconnectionDelay: 500,
       reconnectionDelayMax: 5000,
-      auth: token
-        ? (cb) => cb({ token, csrf })
-        : csrf
-          ? (cb) => cb({ csrf })
-          : undefined
+      auth: token ? { token, csrf } : { csrf }
     }) as Socket<ServerToClientEvents, ClientToServerEvents>
 
     socketRef.current = socket
