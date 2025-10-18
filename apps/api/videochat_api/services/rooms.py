@@ -173,18 +173,22 @@ class RoomService:
 
         return LeaveResult(room=room, remaining=remaining, changed=True)
 
-    async def get_room_for_user(self, room_id: uuid.UUID, user_id: int) -> Room:
+    async def get_room_for_user(
+        self,
+        room_id: uuid.UUID,
+        user_id: int,
+        *,
+        is_admin: bool = False,
+    ) -> Room:
         room = await self._get_room(room_id)
+
+        if is_admin:
+            return room
+
         if self._find_participant(room, user_id) is not None:
             return room
 
-        if user_id == room.initiator_id:
-            return room
-
-        friend_ids = await get_friend_user_ids(
-            self._db, room.initiator_id, status=FriendModelStatus.ACCEPTED
-        )
-        if user_id in friend_ids:
+        if room.target_user_id == user_id:
             return room
 
         raise RoomForbiddenError("Нет доступа к комнате")
