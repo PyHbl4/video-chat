@@ -13,6 +13,16 @@ export interface FriendsProviderProps {
   children: ReactNode
 }
 
+const isLoggingEnabled = process.env.NODE_ENV !== "production"
+
+function logFriendsProvider(...args: unknown[]) {
+  if (!isLoggingEnabled) {
+    return
+  }
+
+  console.debug("[FriendsProvider]", ...args)
+}
+
 export function FriendsProvider({ children }: FriendsProviderProps) {
   const user = useAppUser()
   const initialize = useFriendsStore((state) => state.initialize)
@@ -21,30 +31,59 @@ export function FriendsProvider({ children }: FriendsProviderProps) {
   const { friends } = useFriendsApi()
   const initializedUserRef = useRef<string | null>(null)
 
-  useFriendsRealtime({ enabled: Boolean(user?.id) })
-  useFriendsToasts()
-
   useEffect(() => {
     if (!user?.username) {
+      if (initializedUserRef.current) {
+        logFriendsProvider("сбрасываем инициализацию: пользователь отсутствует", {
+          previousUser: initializedUserRef.current
+        })
+      }
+
       initializedUserRef.current = null
       return
     }
 
     if (initializedUserRef.current === user.username) {
+      logFriendsProvider("пропускаем инициализацию: пользователь уже инициализирован", {
+        username: user.username
+      })
       return
     }
 
+    logFriendsProvider("инициализируем стор друзей", {
+      username: user.username
+    })
     initializedUserRef.current = user.username
     initialize(user.username)
   }, [initialize, user?.username])
 
   useEffect(() => {
     if (!user?.username || hasLoaded) {
+      logFriendsProvider("пропускаем загрузку отношений", {
+        reason: !user?.username ? "нет пользователя" : "уже загружено",
+        username: user?.username,
+        hasLoaded
+      })
       return
     }
 
+    logFriendsProvider("загружаем отношения", {
+      username: user.username
+    })
     void loadRelationships(friends)
   }, [friends, hasLoaded, loadRelationships, user?.username])
+
+  const realtimeEnabled = Boolean(user?.id)
+
+  useEffect(() => {
+    logFriendsProvider("обновляем флаг realtime", {
+      enabled: realtimeEnabled,
+      userId: user?.id
+    })
+  }, [realtimeEnabled, user?.id])
+
+  useFriendsRealtime({ enabled: realtimeEnabled })
+  useFriendsToasts()
 
   return <>{children}</>
 }
