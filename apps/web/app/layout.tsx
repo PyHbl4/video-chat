@@ -1,34 +1,24 @@
+import * as React from "react"
 import type { Metadata } from "next"
 
-import "./globals.css"
-
-import { SessionProvider } from "@video-chat/web-auth"
-import { Toaster } from "@video-chat/ui"
-import { getInitialSession } from "@video-chat/web-auth/session/server"
+import "@/styles/globals.css"
 
 import { ThemeProvider } from "@/components/providers/theme-provider"
 
 export const metadata: Metadata = {
-  title: "Self-Hosted Video Chat",
-  description: "Self-hosted WebRTC mesh video chat"
+  title: "ownSpace",
+  description: "Self-hosted video collaboration platform"
 }
 
-export default async function RootLayout({
+export default function RootLayout({
   children
 }: {
   children: React.ReactNode
 }) {
-  const session = await getInitialSession()
-
   return (
     <html lang="ru" suppressHydrationWarning>
       <body className="min-h-screen bg-background text-foreground antialiased">
-        <SessionProvider initialSession={session}>
-          <ThemeProvider>
-            {children}
-            <Toaster position="top-right" richColors closeButton />
-          </ThemeProvider>
-        </SessionProvider>
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   )
