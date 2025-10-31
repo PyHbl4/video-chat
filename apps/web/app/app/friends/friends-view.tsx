@@ -7,14 +7,12 @@ import type { FriendSummary } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
 
 
-import { CalendarClock, Phone, Search, Trash2, UserRound } from "lucide-react"
+import { CalendarClock, Phone, Search } from "lucide-react"
+
+import { FriendListItem, FriendListItemSkeleton } from "@/components/friends/friend-list-item"
 
 type ListState = "idle" | "loading" | "error"
 
@@ -228,11 +226,13 @@ function FriendList({
 }) {
   if (state === "loading") {
     return (
-      <div className="flex flex-col space-y-4">
+      <ul className="flex list-none flex-col space-y-4 p-0">
         {Array.from({ length: 6 }).map((_, index) => (
-          <FriendCardSkeleton key={index} />
+          <li key={index}>
+            <FriendListItemSkeleton />
+          </li>
         ))}
-      </div>
+      </ul>
     )
   }
 
@@ -261,90 +261,13 @@ function FriendList({
   }
 
   return (
-    <div className="flex flex-col space-y-4">
+    <ul className="flex list-none flex-col space-y-4 p-0">
       {friends.map((friend) => (
-        <FriendCard key={friend.id} friend={friend} />
+        <li key={friend.id}>
+          <FriendListItem friend={friend} />
+        </li>
       ))}
-    </div>
-  )
-}
-
-function FriendCard({ friend }: { friend: FriendSummary }) {
-  const statusLabel = friend.status === "online" ? "В сети" : "Не в сети"
-  const statusVariant = friend.status === "online" ? "default" : "secondary"
-  const initials = React.useMemo(() => {
-    return friend.name
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part.charAt(0))
-      .join("")
-      .toUpperCase()
-      .slice(0, 2)
-  }, [friend.name])
-
-  return (
-    <Card className="h-full border-border/60 transition-shadow hover:shadow-md focus-within:shadow-md">
-      <CardContent className="flex flex-col gap-4 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex w-full flex-col gap-4 sm:w-auto sm:flex-row sm:items-center sm:gap-4">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10 shrink-0 rounded-full">
-              <AvatarImage src={friend.avatarUrl ?? undefined} alt={friend.name} />
-              <AvatarFallback className="flex h-full w-full items-center justify-center rounded-full bg-muted text-sm font-medium uppercase">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col">
-              <p className="text-base font-semibold leading-tight text-foreground">{friend.name}</p>
-              <p className="text-sm leading-tight text-muted-foreground">{friend.title}</p>
-            </div>
-          </div>
-          <Badge variant={statusVariant} className="w-fit whitespace-nowrap border-0 px-3 py-1 text-xs font-medium">
-            {statusLabel}
-          </Badge>
-        </div>
-
-        <div className="flex w-full flex-row gap-2 sm:w-auto sm:justify-end">
-          <Button size="sm" className="h-9 gap-2 flex-1 sm:flex-none">
-            <Phone className="h-4 w-4" aria-hidden="true" />
-            Позвонить
-          </Button>
-          <Button size="sm" variant="outline" className="h-9 gap-2 flex-1 sm:flex-none">
-            <UserRound className="h-4 w-4" aria-hidden="true" />
-            Профиль
-          </Button>
-          <Button size="sm" variant="destructive" className="h-9 gap-2 flex-1 sm:flex-none">
-            <Trash2 className="h-4 w-4" aria-hidden="true" />
-            Удалить
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-function FriendCardSkeleton() {
-  return (
-    <Card className="h-full border-border/60">
-      <CardContent className="flex flex-col gap-4 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex w-full flex-col gap-4 sm:w-auto sm:flex-row sm:items-center sm:gap-4">
-          <div className="flex items-center gap-3">
-            <Skeleton className="h-10 w-10 rounded-full" />
-            <div className="flex flex-col gap-2">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-3 w-24" />
-            </div>
-          </div>
-          <Skeleton className="h-6 w-24" />
-        </div>
-        <div className="flex w-full flex-row gap-2 sm:w-auto sm:justify-end">
-          <Skeleton className="h-9 w-full sm:w-24" />
-          <Skeleton className="h-9 w-full sm:w-24" />
-          <Skeleton className="h-9 w-full sm:w-24" />
-        </div>
-      </CardContent>
-    </Card>
+    </ul>
   )
 }
 
