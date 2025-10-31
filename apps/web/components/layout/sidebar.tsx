@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 import { useTheme } from "next-themes"
 import clsx from "clsx"
 import {
@@ -30,8 +31,19 @@ export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const { resolvedTheme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const isDark = resolvedTheme === "dark"
+  const toggleLabel = mounted
+    ? isDark
+      ? "Включить светлую тему"
+      : "Включить тёмную тему"
+    : "Переключить тему"
+  const ThemeIcon = !mounted ? MoonIcon : isDark ? SunIcon : MoonIcon
 
   return ( 
     <aside className="hidden w-72 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
@@ -42,11 +54,12 @@ export function Sidebar() {
         <Button
           variant="ghost"
           size="icon"
-          aria-label={isDark ? "Включить светлую тему" : "Включить тёмную тему"}
+          aria-label={toggleLabel}
           onClick={() => setTheme(isDark ? "light" : "dark")}
           className="text-sidebar-foreground hover:text-sidebar-accent-foreground"
+          disabled={!mounted}
         >
-          {isDark ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
+          <ThemeIcon className="h-5 w-5" />
         </Button>
       </div>
       <nav className="flex-1 space-y-1 px-3 py-4">
