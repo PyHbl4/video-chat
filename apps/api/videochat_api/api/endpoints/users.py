@@ -11,7 +11,7 @@ from videochat_api.dependencies import (
     get_current_user,
     get_session_dependency,
 )
-from videochat_api.models import User
+from videochat_api.models import User, UserRole
 from videochat_api.schemas import (
     UserDevice,
     UserListItem,
@@ -29,7 +29,7 @@ _MAX_LIMIT = 50
 _ALLOWED_INCLUDES = {"devices", "sessions"}
 
 
-@router.get("/", response_model=UserListResponse)
+@router.get("", response_model=UserListResponse)
 async def list_users(
     include: list[str] = Query(default_factory=list),
     db: AsyncSession = Depends(get_session_dependency),
@@ -95,7 +95,7 @@ async def list_users(
                 username=user.username,
                 email=user.email,
                 is_blocked=user.is_blocked,
-                is_admin=user.is_admin,
+                role=user.role,
                 created_at=user.created_at,
                 updated_at=user.updated_at,
                 devices=devices_payload,
@@ -109,7 +109,7 @@ async def list_users(
 @router.get("/search", response_model=UserSearchResponse)
 async def search_users(
     *,
-    q: str = Query(..., min_length=_MIN_QUERY_LENGTH, max_length=100),
+    q: str = Query(..., min_length=1, max_length=100),
     limit: int = Query(_DEFAULT_LIMIT, ge=1, le=_MAX_LIMIT),
     db: AsyncSession = Depends(get_session_dependency),
     current_user: User = Depends(get_current_user),
@@ -168,7 +168,7 @@ async def delete_user(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден")
 
     is_owner = current_user.id == target.id
-    if not (current_user.is_admin or is_owner):
+    if not (current_user.role == UserRole.ADMIN or is_owner):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Недостаточно прав для удаления пользователя",

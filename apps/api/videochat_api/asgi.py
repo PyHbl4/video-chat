@@ -51,6 +51,10 @@ class SocketIOFastAPIApp:
             f"{self._socketio_path}/"
         )
 
+    @property
+    def state(self):  # type: ignore[override]
+        return self.fastapi_app.state
+
     @staticmethod
     def _normalize_path(path: str) -> str:
         if not path:

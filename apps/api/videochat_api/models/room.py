@@ -8,7 +8,7 @@ from typing import Optional
 
 from sqlalchemy import DateTime, Enum, ForeignKey, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, backref
 
 from videochat_api.db.base import Base
 
@@ -59,7 +59,10 @@ class Room(Base):
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     initiator: Mapped["User"] = relationship(
-        "User", backref="initiated_rooms", foreign_keys=[initiator_id]
+        "User",
+        backref=backref("initiated_rooms", passive_deletes=True),
+        foreign_keys=[initiator_id],
+        passive_deletes=True,
     )
     target_user: Mapped["User | None"] = relationship(
         "User", backref="targeted_rooms", foreign_keys=[target_user_id]
