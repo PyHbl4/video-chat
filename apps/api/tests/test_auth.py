@@ -57,6 +57,7 @@ async def test_web_login_cookie_flow(
     assert me_after_logout.status_code == 401
 
 
+# Проверка сценария для десктопного приложения.
 @pytest.mark.asyncio
 async def test_refresh_rotation_and_logout(client, user_factory) -> None:
     await user_factory("desktop", "desktop@example.com", "Password123!")
