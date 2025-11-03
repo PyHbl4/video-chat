@@ -5,6 +5,7 @@ import pytest
 from videochat_api.config import settings
 
 
+# Проверяет "поток" входа в систему для веб-браузера (логин, проверка сессии логаут).
 @pytest.mark.asyncio
 async def test_web_login_cookie_flow(
     client,
@@ -12,22 +13,34 @@ async def test_web_login_cookie_flow(
     csrf_header,
     session_cookie_name,
 ) -> None:
+    # Создание пользователя.
     await user_factory("webuser", "web@example.com", "Password123!")
 
+    # Запрос на вход (login).
     response = await client.post(
         "/auth/login",
         json={"identifier": "webuser", "password": "Password123!"},
     )
+    # Проверяет, что сервер ответил "OK" (код 200 значит успех).
     assert response.status_code == 200
 
+    # Разбирает ответ сервера в словарь (JSON).
     payload = response.json()
+
+    # Проверка, что в ответе есть токен CSRF и сессия.
     assert payload["csrf_token"]
+
+    # Проверяет, что время жизни сессии совпадает с настройками
     assert payload["session_expires_in"] == settings.session_max_age_seconds
 
     cookie_value = response.cookies.get(session_cookie_name)
+
+    # Убеждается, что сервер установил куки с именем из настроек
     assert cookie_value
 
+    # Запрос на информацию о себе (me)
     me_response = await client.get("/auth/me")
+
     assert me_response.status_code == 200
     me_payload = me_response.json()
     assert me_payload["username"] == "webuser"
