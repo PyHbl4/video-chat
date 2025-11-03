@@ -1,11 +1,18 @@
 from __future__ import annotations
 
 from datetime import datetime
+from enum import StrEnum
 
-from sqlalchemy import Boolean, DateTime, String, func
+from sqlalchemy import Boolean, DateTime, Enum as SAEnum, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from videochat_api.db.base import Base
+
+
+class UserRole(StrEnum):
+    USER = "user"
+    MODERATOR = "moderator"
+    ADMIN = "admin"
 
 
 class User(Base):
@@ -16,7 +23,12 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     is_blocked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
-    is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    role: Mapped[UserRole] = mapped_column(
+        SAEnum(UserRole, name="userrole"),
+        nullable=False,
+        default=UserRole.USER,
+        server_default=UserRole.USER.value,
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False

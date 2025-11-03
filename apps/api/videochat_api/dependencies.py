@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from videochat_api.auth.session import session_manager
 from videochat_api.config import settings
 from videochat_api.db.session import get_db_session
-from videochat_api.models import AuthSession, User
+from videochat_api.models import AuthSession, User, UserRole
 from videochat_api.services.rate_limiter import NullRateLimiter, RateLimiter, RedisRateLimiter
 
 
@@ -66,7 +66,10 @@ async def _resolve_session_from_authorization(
     if not session or session.revoked_at:
         return None
 
-    if session.expires_at and session.expires_at < datetime.now(timezone.utc):
+    expires_at = session_manager._ensure_utc(session.expires_at)
+    if expires_at is not None:
+        session.expires_at = expires_at
+    if expires_at and expires_at < datetime.now(timezone.utc):
         return None
 
     if str(session.user_id) != str(subject):
@@ -111,6 +114,6 @@ async def get_current_user(
 
 
 async def get_current_admin_user(current_user: User = Depends(get_current_user)) -> User:
-    if not current_user.is_admin:
+    if current_user.role != UserRole.ADMIN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Требуются права администратора")
     return current_user

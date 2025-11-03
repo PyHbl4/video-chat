@@ -68,7 +68,7 @@ def _to_friend_schema(friend: FriendRelationship) -> FriendSchema:
     )
 
 
-@router.get("/", response_model=ListFriendsResponse)
+@router.get("", response_model=ListFriendsResponse)
 async def list_friends(
     status_filter: FriendStatus | None = Query(default=None, alias="status"),
     db: AsyncSession = Depends(get_session_dependency),

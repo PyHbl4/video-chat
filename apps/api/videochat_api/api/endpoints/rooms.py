@@ -14,7 +14,7 @@ from videochat_api.dependencies import (
     get_redis,
     get_session_dependency,
 )
-from videochat_api.models import Room as RoomModel, User
+from videochat_api.models import Room as RoomModel, User, UserRole
 from videochat_api.schemas import (
     Room as RoomSchema,
     RoomCreatePayload,
@@ -66,7 +66,10 @@ def _model_to_schema(room_model: RoomModel) -> RoomSchema:
         id=str(room_model.id),
         status=_coerce_enum(room_model.status, RoomStatusSchema),
         initiator_id=str(room_model.initiator_id),
-        target_user_id=str(room_model.target_user_id) if room_model.target_user_id is not None else None,
+        target_user_id=
+            str(getattr(room_model, "target_user_id"))
+            if getattr(room_model, "target_user_id", None) is not None
+            else None,
         created_at=room_model.created_at,
         updated_at=room_model.updated_at,
         closed_at=room_model.closed_at,
@@ -78,7 +81,7 @@ def _build_service(db: AsyncSession, redis: Redis | None) -> RoomService:
     return RoomService(db=db, redis=redis)
 
 
-@router.get("/", response_model=RoomsListResponse)
+@router.get("", response_model=RoomsListResponse)
 async def list_active_rooms(
     db: AsyncSession = Depends(get_session_dependency),
     redis: Redis | None = Depends(get_redis),
@@ -89,7 +92,7 @@ async def list_active_rooms(
     return RoomsListResponse(rooms=[_model_to_schema(room) for room in rooms])
 
 
-@router.post("/", response_model=RoomCreateResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=RoomCreateResponse, status_code=status.HTTP_201_CREATED)
 async def create_room(
     payload: RoomCreatePayload,
     db: AsyncSession = Depends(get_session_dependency),
@@ -155,7 +158,7 @@ async def get_room_status(
         room = await service.get_room_for_user(
             room_uuid,
             current_user.id,
-            is_admin=current_user.is_admin,
+            is_admin=current_user.role == UserRole.ADMIN,
         )
     except RoomNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc

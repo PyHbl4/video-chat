@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
+
+from videochat_api.models.user import UserRole
 
 
 class UserSearchItem(BaseModel):
@@ -55,11 +59,20 @@ class UserListItem(BaseModel):
     username: str
     email: EmailStr
     is_blocked: bool = Field(alias="isBlocked", serialization_alias="isBlocked")
-    is_admin: bool = Field(alias="isAdmin", serialization_alias="isAdmin")
+    role: UserRole = Field(alias="role", serialization_alias="role")
     created_at: datetime = Field(alias="createdAt", serialization_alias="createdAt")
     updated_at: datetime = Field(alias="updatedAt", serialization_alias="updatedAt")
     devices: list[UserDevice] | None = None
     sessions: list[UserSession] | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_is_admin(cls, values: Any) -> Any:
+        if isinstance(values, dict) and "role" not in values:
+            is_admin_value = values.get("is_admin", values.get("isAdmin"))
+            if isinstance(is_admin_value, bool):
+                values["role"] = UserRole.ADMIN if is_admin_value else UserRole.USER
+        return values
 
 
 class UserListResponse(BaseModel):

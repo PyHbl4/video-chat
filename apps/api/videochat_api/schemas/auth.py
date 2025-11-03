@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
+
+from videochat_api.models.user import UserRole
 
 
 class RegisterRequest(BaseModel):
@@ -60,7 +62,13 @@ class UserResponse(BaseModel):
     username: str
     email: EmailStr
     is_blocked: bool
-    is_admin: bool = Field(
-        validation_alias=AliasChoices("is_admin", "isAdmin"),
-        serialization_alias="isAdmin",
-    )
+    role: UserRole = Field(serialization_alias="role")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_is_admin(cls, values: Any) -> Any:
+        if isinstance(values, dict) and "role" not in values:
+            is_admin_value = values.get("is_admin", values.get("isAdmin"))
+            if isinstance(is_admin_value, bool):
+                values["role"] = UserRole.ADMIN if is_admin_value else UserRole.USER
+        return values

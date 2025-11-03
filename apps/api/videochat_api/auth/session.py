@@ -52,6 +52,14 @@ class SessionService:
     def _hash_token(raw_token: str) -> str:
         return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
 
+    @staticmethod
+    def _ensure_utc(value: datetime | None) -> datetime | None:
+        if value is None:
+            return None
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value
+
     async def _ensure_device(
         self,
         db: AsyncSession,
@@ -186,7 +194,10 @@ class SessionService:
             return None
         if session.revoked_at:
             return None
-        if session.expires_at and session.expires_at < _now():
+        expires_at = self._ensure_utc(session.expires_at)
+        if expires_at is not None:
+            session.expires_at = expires_at
+        if expires_at and expires_at < _now():
             return None
         return session
 
@@ -207,7 +218,10 @@ class SessionService:
             return None
         if session.revoked_at:
             return None
-        if session.refresh_token_expires_at and session.refresh_token_expires_at < _now():
+        refresh_expires_at = self._ensure_utc(session.refresh_token_expires_at)
+        if refresh_expires_at is not None:
+            session.refresh_token_expires_at = refresh_expires_at
+        if refresh_expires_at and refresh_expires_at < _now():
             return None
         return session
 

@@ -29,7 +29,9 @@ def anyio_backend(request: pytest.FixtureRequest) -> str:
     return request.param
 
 pytest_plugins = ("pytest_asyncio_plugin",)
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
 from fastapi import FastAPI
@@ -40,9 +42,16 @@ from videochat_api.config import settings
 from videochat_api.db.base import Base
 from videochat_api.dependencies import get_rate_limiter, get_session_dependency
 from videochat_api.main import create_fastapi_app
-from videochat_api.models import User
+from videochat_api.models import User, UserRole
 from videochat_api.services import PresenceService
 from videochat_api.websocket.server import sio
+
+class _TestAsyncSession(AsyncSession):
+    async def expire(self, instance: object, attribute_names: list[str] | None = None) -> None:  # type: ignore[override]
+        def _expire(sync_session: Session) -> None:
+            sync_session.expire(instance, attribute_names=attribute_names)
+
+        await self.run_sync(_expire)
 
 
 # Создаёт фабрику с асинхронным SQLAlchemy engine на SQLite в памяти (база не сохраняется на диск, только в RAM).
@@ -58,6 +67,7 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
     )
     # Создаёт таблицы в базе данных.
     async with engine.begin() as conn:
+        await conn.run_sync(lambda sync_conn: sync_conn.execute(text("PRAGMA foreign_keys=ON")))
         await conn.run_sync(Base.metadata.create_all)
     try:
         yield engine                # Отдаёт engine тестам.
@@ -68,7 +78,7 @@ async def engine() -> AsyncGenerator[AsyncEngine, None]:
 # Создаёт фабрику с асинхронной сессией с помощью engine.
 @pytest.fixture
 async def sessionmaker(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
-    return async_sessionmaker(engine, expire_on_commit=False)
+    return async_sessionmaker(engine, expire_on_commit=False, class_=_TestAsyncSession)
 
 
 # Класс для мокинга (фейковых объектов)
@@ -186,13 +196,13 @@ async def client(app: ASGIApplication) -> AsyncGenerator[AsyncClient, None]:
 @pytest.fixture
 def user_factory(
     sessionmaker: async_sessionmaker[AsyncSession],
-) -> Callable[[str, str, str, bool, bool], Awaitable[User]]:
+) -> Callable[[str, str, str, bool, UserRole], Awaitable[User]]:
     async def _create_user(
         username: str,
         email: str,
         password: str,
         is_blocked: bool = False,
-        is_admin: bool = False,
+        role: UserRole = UserRole.USER,
     ) -> User:
         async with sessionmaker() as session:
             now = datetime.now(timezone.utc)
@@ -201,7 +211,7 @@ def user_factory(
                 email=email,
                 password_hash=hash_password(password),
                 is_blocked=is_blocked,
-                is_admin=is_admin,
+                role=role,
                 created_at=now,
                 updated_at=now,
             )

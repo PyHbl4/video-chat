@@ -1,9 +1,10 @@
 import pytest
 import uuid
 
+import pytest
 from sqlalchemy import select
 
-from videochat_api.models import FriendRelationship, Room, RoomParticipant, User
+from videochat_api.models import FriendRelationship, Room, RoomParticipant, User, UserRole
 
 
 async def _login(client, identifier: str, password: str = "Password123!", **extra: object) -> None:
@@ -62,7 +63,7 @@ async def test_list_users_requires_admin(client, user_factory) -> None:
 
 @pytest.mark.asyncio
 async def test_list_users_with_includes(client, user_factory) -> None:
-    admin = await user_factory("admin", "admin@example.com", "Password123!", is_admin=True)
+    admin = await user_factory("admin", "admin@example.com", "Password123!", role=UserRole.ADMIN)
     target = await user_factory("target", "target@example.com", "Password123!")
 
     await _login(
@@ -115,7 +116,7 @@ async def test_delete_user_by_owner(client, user_factory, sessionmaker) -> None:
 
 @pytest.mark.asyncio
 async def test_delete_user_by_admin(client, user_factory, sessionmaker) -> None:
-    await user_factory("admin", "admin@example.com", "Password123!", is_admin=True)
+    await user_factory("admin", "admin@example.com", "Password123!", role=UserRole.ADMIN)
     target = await user_factory("target-delete", "target-delete@example.com", "Password123!")
 
     await _login(client, "admin")
@@ -145,7 +146,7 @@ async def test_delete_user_forbidden_for_other_user(client, user_factory, sessio
 
 @pytest.mark.asyncio
 async def test_delete_user_not_found(client, user_factory) -> None:
-    await user_factory("admin2", "admin2@example.com", "Password123!", is_admin=True)
+    await user_factory("admin2", "admin2@example.com", "Password123!", role=UserRole.ADMIN)
 
     await _login(client, "admin2")
 
@@ -155,7 +156,7 @@ async def test_delete_user_not_found(client, user_factory) -> None:
 
 @pytest.mark.asyncio
 async def test_delete_user_invalid_identifier(client, user_factory) -> None:
-    await user_factory("admin3", "admin3@example.com", "Password123!", is_admin=True)
+    await user_factory("admin3", "admin3@example.com", "Password123!", role=UserRole.ADMIN)
 
     await _login(client, "admin3")
 

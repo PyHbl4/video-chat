@@ -26,9 +26,13 @@ def pytest_fixture_setup(fixturedef: pytest.FixtureDef[Any], request: pytest.Fix
     func = fixturedef.func
     if inspect.isasyncgenfunction(func):
         loop = request.getfixturevalue("event_loop")
-        kwargs = {name: request.getfixturevalue(name) for name in fixturedef.argnames}
+        kwargs = {
+            name: request._get_active_fixturedef(name).execute(request)
+            for name in fixturedef.argnames
+        }
         agen = func(**kwargs)
         value = loop.run_until_complete(agen.__anext__())
+        fixturedef.cached_result = (value, fixturedef.cache_key(request), None)
 
         def _finalizer() -> None:
             loop.run_until_complete(agen.aclose())
@@ -38,8 +42,13 @@ def pytest_fixture_setup(fixturedef: pytest.FixtureDef[Any], request: pytest.Fix
 
     if inspect.iscoroutinefunction(func):
         loop = request.getfixturevalue("event_loop")
-        kwargs = {name: request.getfixturevalue(name) for name in fixturedef.argnames}
-        return loop.run_until_complete(func(**kwargs))
+        kwargs = {
+            name: request._get_active_fixturedef(name).execute(request)
+            for name in fixturedef.argnames
+        }
+        value = loop.run_until_complete(func(**kwargs))
+        fixturedef.cached_result = (value, fixturedef.cache_key(request), None)
+        return value
 
     return None
 

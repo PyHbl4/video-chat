@@ -16,6 +16,7 @@ from videochat_api.models import (
     RoomParticipantRole,
     RoomStatus,
     User,
+    UserRole,
 )
 from videochat_api.schemas import (
     RoomParticipantRole as RoomParticipantRoleSchema,
@@ -160,7 +161,7 @@ async def test_room_status_available_for_admin(
     user_factory,
     sessionmaker: async_sessionmaker[AsyncSession],
 ) -> None:
-    admin = await user_factory("admin", "admin@example.com", "Password123!", is_admin=True)
+    admin = await user_factory("admin", "admin@example.com", "Password123!", role=UserRole.ADMIN)
     alice = await user_factory("alice", "alice@example.com", "Password123!")
     bob = await user_factory("bob", "bob@example.com", "Password123!")
 
@@ -537,7 +538,7 @@ async def test_list_rooms_returns_active_rooms_for_admin(
     user_factory,
     sessionmaker: async_sessionmaker[AsyncSession],
 ) -> None:
-    admin = await user_factory("admin", "admin@example.com", "Password123!", is_admin=True)
+    admin = await user_factory("admin", "admin@example.com", "Password123!", role=UserRole.ADMIN)
     alice = await user_factory("alice", "alice@example.com", "Password123!")
     bob = await user_factory("bob", "bob@example.com", "Password123!")
     carol = await user_factory("carol", "carol@example.com", "Password123!")
